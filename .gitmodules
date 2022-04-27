@@ -1,0 +1,3 @@
+[submodule "lib/Json-Serializer"]
+	path = lib/Json-Serializer
+	url = https://github.com/CleverComponents/Json-Serializer
