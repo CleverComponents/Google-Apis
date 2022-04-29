@@ -51,7 +51,7 @@ type
   end;
 
   TCalendarServiceTests = class(TTestCase)
-  private
+  strict private
     function GetService: TCalendarService;
 
     function ListCalendarList(const AFields: string): TCalendarList;

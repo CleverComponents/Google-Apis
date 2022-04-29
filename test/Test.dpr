@@ -21,7 +21,10 @@ uses
   GoogleApis.Persister in '..\src\core\GoogleApis.Persister.pas',
   GoogleApis.Calendar.Data in '..\src\calendar\GoogleApis.Calendar.Data.pas',
   GoogleApis.Calendar in '..\src\calendar\GoogleApis.Calendar.pas',
-  GoogleApis.Calendar.Tests in 'calendar\GoogleApis.Calendar.Tests.pas';
+  GoogleApis.Calendar.Tests in 'calendar\GoogleApis.Calendar.Tests.pas',
+  GoogleApis.Gmail in '..\src\gmail\GoogleApis.Gmail.pas',
+  GoogleApis.Gmail.Data in '..\src\gmail\GoogleApis.Gmail.Data.pas',
+  GoogleApis.Gmail.Tests in 'gmail\GoogleApis.Gmail.Tests.pas';
 
 {$R *.RES}
 
