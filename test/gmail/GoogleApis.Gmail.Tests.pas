@@ -46,7 +46,9 @@ type
     class destructor Destroy;
     function GetService: TGmailService;
   published
-    procedure TestLabelList;
+    procedure TestList;
+    procedure TestGet;
+    procedure TestModify;
   end;
 
 implementation
@@ -81,7 +83,27 @@ begin
   Result := Service;
 end;
 
-procedure TLabelsTests.TestLabelList;
+procedure TLabelsTests.TestGet;
+var
+  request: TLabelsGetRequest;
+  response: TLabel;
+begin
+  request := nil;
+  response := nil;
+  try
+    request := GetService().Users.Labels.Get('me', 'INBOX');
+
+    response := request.Execute();
+
+    CheckEquals('INBOX', response.Name);
+    CheckEquals('system', response.Type_);
+  finally
+    response.Free();
+    request.Free();
+  end;
+end;
+
+procedure TLabelsTests.TestList;
 var
   request: TLabelsListRequest;
   response: TLabels;
@@ -107,6 +129,63 @@ begin
   finally
     response.Free();
     request.Free();
+  end;
+end;
+
+procedure TLabelsTests.TestModify;
+var
+  create_request: TLabelsCreateRequest;
+  patch_request: TLabelsPatchRequest;
+  delete_request: TLabelsDeleteRequest;
+  content, response: TLabel;
+  id: string;
+begin
+  create_request := nil;
+  patch_request := nil;
+  delete_request := nil;
+  response := nil;
+  try
+    //create
+    content := TLabel.Create();
+    create_request := GetService().Users.Labels.Create_('me', content);
+    content.Name := 'delphi_gmail_api_name';
+
+    response := create_request.Execute();
+
+    id := response.Id;
+    CheckNotEquals('', id);
+    CheckEquals(content.Name, response.Name);
+    FreeAndNil(response);
+
+    //patch
+    content := TLabel.Create();
+    patch_request := GetService().Users.Labels.Patch('me', id, content);
+    content.Id := id;
+    content.Name := 'delphi_gmail_api_name_updated';
+
+    response := patch_request.Execute();
+
+    id := response.Id;
+    CheckNotEquals('', id);
+    CheckEquals(content.Name, response.Name);
+    FreeAndNil(response);
+
+    //delete
+    delete_request := GetService().Users.Labels.Delete('me', id);
+    delete_request.Execute();
+
+    //try to delete non-existing
+    try
+      delete_request.Execute();
+      CheckFalse(True);
+    except
+      on E: EGoogleApisException do;
+    end;
+  finally
+    response.Free();
+    delete_request.Free();
+    patch_request.Free();
+    create_request.Free();
   end;
 end;
 
