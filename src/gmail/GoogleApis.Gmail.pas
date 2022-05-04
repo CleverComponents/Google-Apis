@@ -118,6 +118,52 @@ type
     function Execute: TLabel; override;
   end;
 
+  TMessagesListRequest = class(TServiceRequest<TMessages>)
+  strict private
+    FUserId: string;
+    FIncludeSpamTrash: Boolean;
+    FPageToken: string;
+    FLabelIds: TArray<string>;
+    FMaxResults: Integer;
+    FQ: string;
+
+    procedure FillParams(AParams: THttpRequestParameterList);
+  public
+    constructor Create(AService: TService; const AUserId: string);
+
+    function Execute: TMessages; override;
+
+    property UserId: string read FUserId;
+
+    property MaxResults: Integer read FMaxResults write FMaxResults;
+    property PageToken: string read FPageToken write FPageToken;
+    property Q: string read FQ write FQ;
+    property LabelIds: TArray<string> read FLabelIds write FLabelIds;
+    property IncludeSpamTrash: Boolean read FIncludeSpamTrash write FIncludeSpamTrash;
+  end;
+
+  TFormat = (mfMinimal, mfFull, mfRaw, mfMetadata);
+
+  TMessagesGetRequest = class(TServiceRequest<TMessage>)
+  strict private
+    FUserId: string;
+    FId: string;
+    FFormat: TFormat;
+    FMetadataHeaders: TArray<string>;
+
+    procedure FillParams(AParams: THttpRequestParameterList);
+  public
+    constructor Create(AService: TService; const AUserId, AId: string);
+
+    function Execute: TMessage; override;
+
+    property UserId: string read FUserId;
+    property Id: string read FId;
+
+    property Format: TFormat read FFormat write FFormat;
+    property MetadataHeaders: TArray<string> read FMetadataHeaders write FMetadataHeaders;
+  end;
+
   TLabelsResource = class(TGmailResource)
   public
     function Create_(const AUserId: string; AContent: TLabel): TLabelsCreateRequest; virtual;
@@ -128,13 +174,31 @@ type
     function Update(const AUserId, AId: string; AContent: TLabel): TLabelsUpdateRequest; virtual;
   end;
 
+  TMessagesResource = class(TGmailResource)
+  public
+    //function batchDelete
+    //function batchModify
+    //function delete
+    function Get(const AUserId, AId: string): TMessagesGetRequest; virtual;
+    //function import
+    //function insert
+    function List(const AUserId: string): TMessagesListRequest; virtual;
+    //function modify
+    //function send
+    //function trash
+    //function untrash
+  end;
+
   TUsersResource = class(TGmailResource)
   strict private
     FLabels: TLabelsResource;
+    FMessages: TMessagesResource;
 
     function GetLabels: TLabelsResource;
+    function GetMessages: TMessagesResource;
   strict protected
     function CreateLabels: TLabelsResource; virtual;
+    function CreateMessages: TMessagesResource; virtual;
   public
     constructor Create(AService: TService);
     destructor Destroy; override;
@@ -142,7 +206,7 @@ type
     //property Drafts
     //property History
     property Labels: TLabelsResource read GetLabels;
-    //property Messages
+    property Messages: TMessagesResource read GetMessages;
     //property Settings
     //property Threads
   end;
@@ -162,6 +226,9 @@ type
   end;
 
 const
+  //The format to return the message in.
+  Formats: array[TFormat] of string = ('minimal', 'full', 'raw', 'metadata');
+
   //Available OAuth 2.0 scopes for use with the Gmail API.
 
   //Read, compose, send, and permanently delete all your email from Gmail
@@ -237,7 +304,9 @@ end;
 constructor TUsersResource.Create(AService: TService);
 begin
   inherited Create(AService);
+
   FLabels := nil;
+  FMessages := nil;
 end;
 
 function TUsersResource.CreateLabels: TLabelsResource;
@@ -245,9 +314,16 @@ begin
   Result := TLabelsResource.Create(Service);
 end;
 
+function TUsersResource.CreateMessages: TMessagesResource;
+begin
+  Result := TMessagesResource.Create(Service);
+end;
+
 destructor TUsersResource.Destroy;
 begin
+  FreeAndNil(FMessages);
   FreeAndNil(FLabels);
+
   inherited Destroy();
 end;
 
@@ -258,6 +334,15 @@ begin
     FLabels := CreateLabels();
   end;
   Result := FLabels;
+end;
+
+function TUsersResource.GetMessages: TMessagesResource;
+begin
+  if (FMessages = nil) then
+  begin
+    FMessages := CreateMessages();
+  end;
+  Result := FMessages;
 end;
 
 { TLabelsResource }
@@ -441,6 +526,101 @@ begin
     Result := TLabel(Service.Initializer.JsonSerializer.JsonToObject(TLabel, response));
   finally
     params.Free();
+  end;
+end;
+
+{ TMessagesResource }
+
+function TMessagesResource.Get(const AUserId, AId: string): TMessagesGetRequest;
+begin
+  Result := TMessagesGetRequest.Create(Service, AUserId, AId);
+end;
+
+function TMessagesResource.List(const AUserId: string): TMessagesListRequest;
+begin
+  Result := TMessagesListRequest.Create(Service, AUserId);
+end;
+
+{ TMessagesListRequest }
+
+constructor TMessagesListRequest.Create(AService: TService; const AUserId: string);
+begin
+  inherited Create(AService);
+  FUserId := AUserId;
+end;
+
+function TMessagesListRequest.Execute: TMessages;
+var
+  response: string;
+  params: THttpRequestParameterList;
+begin
+  params := THttpRequestParameterList.Create();
+  try
+    FillParams(params);
+    response := Service.Initializer.HttpClient.Get('https://gmail.googleapis.com/gmail/v1/users/' + UserId + '/messages', params);
+    Result := TMessages(Service.Initializer.JsonSerializer.JsonToObject(TMessages, response));
+  finally
+    params.Free();
+  end;
+end;
+
+procedure TMessagesListRequest.FillParams(AParams: THttpRequestParameterList);
+var
+  id: string;
+begin
+  AParams.Add('maxResults', maxResults);
+  AParams.Add('pageToken', PageToken);
+  AParams.Add('q', Q);
+
+  if (LabelIds <> nil) then
+  begin
+    for id in LabelIds do
+    begin
+      AParams.Add('labelIds', id);
+    end;
+  end;
+
+  AParams.Add('includeSpamTrash', IncludeSpamTrash);
+end;
+
+{ TMessagesGetRequest }
+
+constructor TMessagesGetRequest.Create(AService: TService; const AUserId, AId: string);
+begin
+  inherited Create(AService);
+
+  FUserId := AUserId;
+  FId := AId;
+end;
+
+function TMessagesGetRequest.Execute: TMessage;
+var
+  response: string;
+  params: THttpRequestParameterList;
+begin
+  params := THttpRequestParameterList.Create();
+  try
+    FillParams(params);
+    response := Service.Initializer.HttpClient.Get(
+      'https://gmail.googleapis.com/gmail/v1/users/' + UserId + '/messages/' + Id, params);
+    Result := TMessage(Service.Initializer.JsonSerializer.JsonToObject(TMessage, response));
+  finally
+    params.Free();
+  end;
+end;
+
+procedure TMessagesGetRequest.FillParams(AParams: THttpRequestParameterList);
+var
+  hdr: string;
+begin
+  AParams.Add('format', Formats[Format]);
+
+  if (MetadataHeaders <> nil) then
+  begin
+    for hdr in MetadataHeaders do
+    begin
+      AParams.Add('metadataHeaders', hdr);
+    end;
   end;
 end;
 

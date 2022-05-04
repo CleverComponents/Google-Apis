@@ -51,6 +51,19 @@ type
     procedure TestModify;
   end;
 
+  TMessagesTests = class(TTestCase)
+  strict private
+    class var Service: TGmailService;
+
+    class constructor Create;
+    class destructor Destroy;
+    function GetService: TGmailService;
+    function GetMessageId: string;
+  published
+    procedure TestList;
+    procedure TestGet;
+  end;
+
 implementation
 
 { TLabelsTests }
@@ -189,7 +202,140 @@ begin
   end;
 end;
 
+{ TMessagesTests }
+
+class constructor TMessagesTests.Create;
+begin
+  Service := nil;
+end;
+
+class destructor TMessagesTests.Destroy;
+begin
+  Service.Free();
+end;
+
+function TMessagesTests.GetMessageId: string;
+var
+  request: TMessagesListRequest;
+  response: TMessages;
+begin
+  request := nil;
+  response := nil;
+  try
+    request := GetService().Users.Messages.List('me');
+    request.MaxResults := 1;
+
+    response := request.Execute();
+
+    Result := response.Messages[0].Id;
+  finally
+    response.Free();
+    request.Free();
+  end;
+end;
+
+function TMessagesTests.GetService: TGmailService;
+var
+  credential: TGoogleOAuthCredential;
+  initializer: TServiceInitializer;
+begin
+  if (Service = nil) then
+  begin
+    credential := TGoogleOAuthCredential.Create();
+    initializer := TGoogleApisServiceInitializer.Create(credential, 'CleverComponents Calendar test');
+    Service := TGmailService.Create(initializer);
+
+    credential.ClientID := '421475025220-6khpgoldbdsi60fegvjdqk2bk4v19ss2.apps.googleusercontent.com';
+    credential.ClientSecret := '_4HJyAVUmH_iVrPB8pOJXjR1';
+    credential.Scope := GmailReadonly;
+  end;
+  Result := Service;
+end;
+
+procedure TMessagesTests.TestGet;
+var
+  request: TMessagesGetRequest;
+  response: TMessage;
+  id: string;
+begin
+  request := nil;
+  response := nil;
+  try
+    id := GetMessageId();
+
+    request := GetService().Users.Messages.Get('me', id);
+
+    //full
+    request.Format := mfFull;
+    request.MetadataHeaders := nil;
+
+    response := request.Execute();
+
+    CheckEquals(id, response.Id);
+    Check(response.Payload <> nil);
+    CheckEquals('', response.Raw);
+
+    Check(Length(response.Payload.Headers) > 0);
+    Check(response.Payload.Body <> nil);
+
+    //raw
+    request.Format := mfRaw;
+    request.MetadataHeaders := nil;
+
+    response := request.Execute();
+
+    CheckEquals(id, response.Id);
+    Check(response.Payload = nil);
+    CheckNotEquals('', response.Raw);
+
+    //metadata
+    request.Format := mfMetadata;
+    request.MetadataHeaders := TArray<string>.Create('SUBJECT', 'FROM');
+
+    response := request.Execute();
+
+    CheckEquals(id, response.Id);
+    Check(response.Payload <> nil);
+    CheckEquals('', response.Raw);
+
+    CheckEquals(2, Length(response.Payload.Headers));
+    CheckNotEquals('', response.Payload.Headers[0].Value);
+    Check(response.Payload.Body = nil);
+  finally
+    response.Free();
+    request.Free();
+  end;
+end;
+
+procedure TMessagesTests.TestList;
+var
+  request: TMessagesListRequest;
+  response: TMessages;
+begin
+  request := nil;
+  response := nil;
+  try
+    request := GetService().Users.Messages.List('me');
+    request.MaxResults := 2;
+    request.LabelIds := TArray<string>.Create('INBOX');
+
+    response := request.Execute();
+
+    CheckEquals(2, Length(response.Messages));
+
+    CheckNotEquals('', response.Messages[0].Id);
+    CheckNotEquals('', response.Messages[0].ThreadId);
+
+    CheckNotEquals(response.Messages[0].Id, response.Messages[1].Id);
+    CheckNotEquals(response.Messages[0].ThreadId, response.Messages[1].ThreadId);
+  finally
+    response.Free();
+    request.Free();
+  end;
+end;
+
 initialization
   TestFramework.RegisterTest(TLabelsTests.Suite);
+  TestFramework.RegisterTest(TMessagesTests.Suite);
 
 end.

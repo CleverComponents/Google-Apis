@@ -226,7 +226,7 @@ type
   end;
 
 resourcestring
-  cUnspecifiedError = 'Unspecified error';
+  UnspecifiedError = 'Unspecified error';
 
 implementation
 
@@ -395,13 +395,13 @@ end;
 
 constructor EGoogleApisException.Create(AError: TError);
 begin
-  inherited Create(cUnspecifiedError);
+  inherited Create(UnspecifiedError);
   SetError(AError);
 end;
 
 constructor EGoogleApisException.Create;
 begin
-  inherited Create(cUnspecifiedError);
+  inherited Create(UnspecifiedError);
 end;
 
 destructor EGoogleApisException.Destroy;

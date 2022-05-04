@@ -34,7 +34,8 @@ unit GoogleApis.Persister;
 interface
 
 uses
-  System.Classes, System.SysUtils, GoogleApis, clOAuth, clHttp, clUriUtils, clHttpRequest, clJsonSerializer;
+  System.Classes, System.SysUtils, GoogleApis, clJsonSerializer,
+  clOAuth, clHttp, clUriUtils, clHttpRequest, clEncoder;
 
 type
   TGoogleOAuthCredential = class(TCredential)
@@ -102,6 +103,12 @@ type
   public
     constructor Create(ACredential: TCredential; const ApplicationName: string);
     destructor Destroy; override;
+  end;
+
+  TBase64UrlEncoder = class
+  public
+    function Encode(const Value: string): string; virtual;
+    function Decode(const Value: string): string; virtual;
   end;
 
 implementation
@@ -412,6 +419,23 @@ end;
 function TGoogleApisJsonSerializer.ObjectToJson(AObject: TObject): string;
 begin
   Result := FSerializer.ObjectToJson(AObject);
+end;
+
+{ TBase64UrlEncoder }
+
+function TBase64UrlEncoder.Decode(const Value: string): string;
+begin
+  Result := StringReplace(Value, '-', '+', [rfReplaceAll]);
+  Result := StringReplace(Result, '_', '/', [rfReplaceAll]);
+  Result := TclEncoder.Decode(Result, cmBase64);
+end;
+
+function TBase64UrlEncoder.Encode(const Value: string): string;
+begin
+  Result := TclEncoder.EncodeToString(Value, cmBase64);
+  Result := StringReplace(Result, '+', '-', [rfReplaceAll]);
+  Result := StringReplace(Result, '/', '_', [rfReplaceAll]);
+  Result := StringReplace(Result, '=', '', [rfReplaceAll]);
 end;
 
 end.

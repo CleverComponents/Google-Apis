@@ -50,6 +50,7 @@ type
   TUtilsTests = class(TTestCase)
   published
     procedure TestRfc3339Conversion;
+    procedure TestBase64UrlEncoding;
   end;
 
 implementation
@@ -145,6 +146,24 @@ begin
 end;
 
 { TUtilsTests }
+
+procedure TUtilsTests.TestBase64UrlEncoding;
+const
+  encoded = '_9j_4AAQSkZJRgABAgEASABIAAD_7QxoUGhvdG9zaG9wIDMuMAA4QklNA-0AAAAAZm9v';
+var
+  encoder: TBase64UrlEncoder;
+  data: string;
+begin
+  encoder := TBase64UrlEncoder.Create();
+  try
+    data := encoder.Decode(encoded);
+    data := encoder.Encode(data);
+
+    CheckEquals(encoded, data);
+  finally
+    encoder.Free();
+  end;
+end;
 
 procedure TUtilsTests.TestRfc3339Conversion;
 const
