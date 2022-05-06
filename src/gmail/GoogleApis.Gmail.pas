@@ -37,13 +37,15 @@ uses
   System.Classes, System.SysUtils, System.Contnrs, GoogleApis, GoogleApis.Gmail.Data;
 
 type
-  TGmailResource = class
+  TUsersGetProfileRequest = class(TServiceRequest<TProfile>)
   strict private
-    FService: TService;
+    FUserId: string;
   public
-    constructor Create(AService: TService);
+    constructor Create(AService: TService; const AUserId: string);
 
-    property Service: TService read FService;
+    function Execute: TProfile; override;
+
+    property UserId: string read FUserId;
   end;
 
   TLabelsListRequest = class(TServiceRequest<TLabels>)
@@ -164,6 +166,42 @@ type
     property MetadataHeaders: TArray<string> read FMetadataHeaders write FMetadataHeaders;
   end;
 
+  TMessagesSendRequest = class(TServiceRequest<TMessage>)
+  strict private
+    FUserId: string;
+    FContent: TMessage;
+  public
+    constructor Create(AService: TService; const AUserId: string; AContent: TMessage);
+    destructor Destroy; override;
+
+    function Execute: TMessage; override;
+
+    property UserId: string read FUserId;
+    property Content: TMessage read FContent;
+  end;
+
+  TMessagesDeleteRequest = class(TServiceRequest<Boolean>)
+  strict private
+    FUserId: string;
+    FId: string;
+  public
+    constructor Create(AService: TService; const AUserId, AId: string);
+
+    function Execute: Boolean; override;
+
+    property UserId: string read FUserId;
+    property Id: string read FId;
+  end;
+
+  TGmailResource = class
+  strict private
+    FService: TService;
+  public
+    constructor Create(AService: TService);
+
+    property Service: TService read FService;
+  end;
+
   TLabelsResource = class(TGmailResource)
   public
     function Create_(const AUserId: string; AContent: TLabel): TLabelsCreateRequest; virtual;
@@ -178,13 +216,13 @@ type
   public
     //function batchDelete
     //function batchModify
-    //function delete
+    function Delete(const AUserId, AId: string): TMessagesDeleteRequest; virtual;
     function Get(const AUserId, AId: string): TMessagesGetRequest; virtual;
     //function import
     //function insert
     function List(const AUserId: string): TMessagesListRequest; virtual;
     //function modify
-    //function send
+    function Send(const AUserId: string; AContent: TMessage): TMessagesSendRequest; virtual;
     //function trash
     //function untrash
   end;
@@ -202,6 +240,10 @@ type
   public
     constructor Create(AService: TService);
     destructor Destroy; override;
+
+    function GetProfile(const AUserId: string): TUsersGetProfileRequest; virtual;
+    //function stop
+    //function watch
 
     //property Drafts
     //property History
@@ -343,6 +385,11 @@ begin
     FMessages := CreateMessages();
   end;
   Result := FMessages;
+end;
+
+function TUsersResource.GetProfile(const AUserId: string): TUsersGetProfileRequest;
+begin
+  Result := TUsersGetProfileRequest.Create(Service, AUserId);
 end;
 
 { TLabelsResource }
@@ -531,6 +578,11 @@ end;
 
 { TMessagesResource }
 
+function TMessagesResource.Delete(const AUserId, AId: string): TMessagesDeleteRequest;
+begin
+  Result := TMessagesDeleteRequest.Create(Service, AUserId, AId);
+end;
+
 function TMessagesResource.Get(const AUserId, AId: string): TMessagesGetRequest;
 begin
   Result := TMessagesGetRequest.Create(Service, AUserId, AId);
@@ -539,6 +591,11 @@ end;
 function TMessagesResource.List(const AUserId: string): TMessagesListRequest;
 begin
   Result := TMessagesListRequest.Create(Service, AUserId);
+end;
+
+function TMessagesResource.Send(const AUserId: string; AContent: TMessage): TMessagesSendRequest;
+begin
+  Result := TMessagesSendRequest.Create(Service, AUserId, AContent);
 end;
 
 { TMessagesListRequest }
@@ -622,6 +679,80 @@ begin
       AParams.Add('metadataHeaders', hdr);
     end;
   end;
+end;
+
+{ TMessagesSendRequest }
+
+constructor TMessagesSendRequest.Create(AService: TService;
+  const AUserId: string; AContent: TMessage);
+begin
+  inherited Create(AService);
+
+  FUserId := AUserId;
+  FContent := AContent;
+end;
+
+destructor TMessagesSendRequest.Destroy;
+begin
+  FContent.Free();
+  inherited Destroy();
+end;
+
+function TMessagesSendRequest.Execute: TMessage;
+var
+  request, response: string;
+  params: THttpRequestParameterList;
+begin
+  params := THttpRequestParameterList.Create();
+  try
+    request := Service.Initializer.JsonSerializer.ObjectToJson(Content);
+
+    response := Service.Initializer.HttpClient.Post(
+      'https://gmail.googleapis.com/gmail/v1/users/' + UserId + '/messages/send', params, request);
+
+    Result := TMessage(Service.Initializer.JsonSerializer.JsonToObject(TMessage, response));
+  finally
+    params.Free();
+  end;
+end;
+
+{ TUsersGetProfileRequest }
+
+constructor TUsersGetProfileRequest.Create(AService: TService; const AUserId: string);
+begin
+  inherited Create(AService);
+  FUserId := AUserId;
+end;
+
+function TUsersGetProfileRequest.Execute: TProfile;
+var
+  response: string;
+  params: THttpRequestParameterList;
+begin
+  params := THttpRequestParameterList.Create();
+  try
+    response := Service.Initializer.HttpClient.Get('https://gmail.googleapis.com/gmail/v1/users/' + UserId + '/profile', params);
+    Result := TProfile(Service.Initializer.JsonSerializer.JsonToObject(TProfile, response));
+  finally
+    params.Free();
+  end;
+end;
+
+{ TMessagesDeleteRequest }
+
+constructor TMessagesDeleteRequest.Create(AService: TService; const AUserId, AId: string);
+begin
+  inherited Create(AService);
+
+  FUserId := AUserId;
+  FId := AId;
+end;
+
+function TMessagesDeleteRequest.Execute: Boolean;
+begin
+  Service.Initializer.HttpClient.Delete(
+    'https://gmail.googleapis.com/gmail/v1/users/' + UserId + '/messages/' + Id);
+  Result := True;
 end;
 
 end.

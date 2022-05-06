@@ -151,18 +151,12 @@ procedure TUtilsTests.TestBase64UrlEncoding;
 const
   encoded = '_9j_4AAQSkZJRgABAgEASABIAAD_7QxoUGhvdG9zaG9wIDMuMAA4QklNA-0AAAAAZm9v';
 var
-  encoder: TBase64UrlEncoder;
   data: string;
 begin
-  encoder := TBase64UrlEncoder.Create();
-  try
-    data := encoder.Decode(encoded);
-    data := encoder.Encode(data);
+  data := TBase64UrlEncoder.Decode(encoded);
+  data := TBase64UrlEncoder.Encode(data);
 
-    CheckEquals(encoded, data);
-  finally
-    encoder.Free();
-  end;
+  CheckEquals(encoded, data);
 end;
 
 procedure TUtilsTests.TestRfc3339Conversion;

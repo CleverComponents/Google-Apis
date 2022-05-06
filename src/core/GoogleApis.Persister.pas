@@ -105,10 +105,10 @@ type
     destructor Destroy; override;
   end;
 
-  TBase64UrlEncoder = class
+  TBase64UrlEncoder = class sealed
   public
-    function Encode(const Value: string): string; virtual;
-    function Decode(const Value: string): string; virtual;
+    class function Encode(const Value: string): string;
+    class function Decode(const Value: string): string;
   end;
 
 implementation
@@ -423,14 +423,14 @@ end;
 
 { TBase64UrlEncoder }
 
-function TBase64UrlEncoder.Decode(const Value: string): string;
+class function TBase64UrlEncoder.Decode(const Value: string): string;
 begin
   Result := StringReplace(Value, '-', '+', [rfReplaceAll]);
   Result := StringReplace(Result, '_', '/', [rfReplaceAll]);
   Result := TclEncoder.Decode(Result, cmBase64);
 end;
 
-function TBase64UrlEncoder.Encode(const Value: string): string;
+class function TBase64UrlEncoder.Encode(const Value: string): string;
 begin
   Result := TclEncoder.EncodeToString(Value, cmBase64);
   Result := StringReplace(Result, '+', '-', [rfReplaceAll]);

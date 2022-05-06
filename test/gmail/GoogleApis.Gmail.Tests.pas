@@ -38,13 +38,12 @@ uses
   GoogleApis, GoogleApis.Persister, GoogleApis.Gmail, GoogleApis.Gmail.Data;
 
 type
-  TLabelsTests = class(TTestCase)
-  strict private
-    class var Service: TGmailService;
+  TUsersTests = class(TTestCase)
+  published
+    procedure TestGetProfile;
+  end;
 
-    class constructor Create;
-    class destructor Destroy;
-    function GetService: TGmailService;
+  TLabelsTests = class(TTestCase)
   published
     procedure TestList;
     procedure TestGet;
@@ -53,32 +52,20 @@ type
 
   TMessagesTests = class(TTestCase)
   strict private
-    class var Service: TGmailService;
-
-    class constructor Create;
-    class destructor Destroy;
-    function GetService: TGmailService;
-    function GetMessageId: string;
+    function GetMessageId(const ASubject: string = ''): string;
+    function GetMyEmail: string;
   published
     procedure TestList;
     procedure TestGet;
+    procedure TestSend;
   end;
 
 implementation
 
-{ TLabelsTests }
+var
+  Service: TGmailService = nil;
 
-class constructor TLabelsTests.Create;
-begin
-  Service := nil;
-end;
-
-class destructor TLabelsTests.Destroy;
-begin
-  Service.Free();
-end;
-
-function TLabelsTests.GetService: TGmailService;
+function GetService: TGmailService;
 var
   credential: TGoogleOAuthCredential;
   initializer: TServiceInitializer;
@@ -91,10 +78,12 @@ begin
 
     credential.ClientID := '421475025220-6khpgoldbdsi60fegvjdqk2bk4v19ss2.apps.googleusercontent.com';
     credential.ClientSecret := '_4HJyAVUmH_iVrPB8pOJXjR1';
-    credential.Scope := GmailLabels;
+    credential.Scope := MailGoogleCom + ' ' + GMailLabels + ' ' + GmailReadonly + ' ' + GmailSend;
   end;
   Result := Service;
 end;
+
+{ TLabelsTests }
 
 procedure TLabelsTests.TestGet;
 var
@@ -204,17 +193,7 @@ end;
 
 { TMessagesTests }
 
-class constructor TMessagesTests.Create;
-begin
-  Service := nil;
-end;
-
-class destructor TMessagesTests.Destroy;
-begin
-  Service.Free();
-end;
-
-function TMessagesTests.GetMessageId: string;
+function TMessagesTests.GetMessageId(const ASubject: string): string;
 var
   request: TMessagesListRequest;
   response: TMessages;
@@ -225,31 +204,41 @@ begin
     request := GetService().Users.Messages.List('me');
     request.MaxResults := 1;
 
+    if (ASubject <> '') then
+    begin
+      request.Q := 'subject:' + ASubject;
+    end;
+
     response := request.Execute();
 
-    Result := response.Messages[0].Id;
+    if (Length(response.Messages) = 1) then
+    begin
+      Result := response.Messages[0].Id;
+    end else
+    begin
+      Result := '';
+    end;
   finally
     response.Free();
     request.Free();
   end;
 end;
 
-function TMessagesTests.GetService: TGmailService;
+function TMessagesTests.GetMyEmail: string;
 var
-  credential: TGoogleOAuthCredential;
-  initializer: TServiceInitializer;
+  request: TUsersGetProfileRequest;
+  response: TProfile;
 begin
-  if (Service = nil) then
-  begin
-    credential := TGoogleOAuthCredential.Create();
-    initializer := TGoogleApisServiceInitializer.Create(credential, 'CleverComponents Calendar test');
-    Service := TGmailService.Create(initializer);
-
-    credential.ClientID := '421475025220-6khpgoldbdsi60fegvjdqk2bk4v19ss2.apps.googleusercontent.com';
-    credential.ClientSecret := '_4HJyAVUmH_iVrPB8pOJXjR1';
-    credential.Scope := GmailReadonly;
+  request := nil;
+  response := nil;
+  try
+    request := GetService().Users.GetProfile('me');
+    response := request.Execute();
+    Result := response.EmailAddress;
+  finally
+    response.Free();
+    request.Free();
   end;
-  Result := Service;
 end;
 
 procedure TMessagesTests.TestGet;
@@ -334,8 +323,79 @@ begin
   end;
 end;
 
+procedure TMessagesTests.TestSend;
+const
+  subj = 'D2898DF6-2B2E-49A4-9FD4-A41E79B091AF';
+
+  msg =
+'From: %s'#$D#$A +
+'To: %s'#$D#$A +
+'Subject: ' + subj + #$D#$A +
+'MIME-Version: 1.0'#$D#$A +
+'Content-Type: text/plain'#$D#$A +
+#$D#$A +
+'Hello from gmail api for Delphi'#$D#$A;
+
+var
+  send_request: TMessagesSendRequest;
+  delete_request: TMessagesDeleteRequest;
+  content, response: TMessage;
+  myEmail: string;
+begin
+  myEmail := GetMyEmail();
+
+  send_request := nil;
+  delete_request := nil;
+  response := nil;
+  try
+    content := TMessage.Create();
+    send_request := GetService().Users.Messages.Send('me', content);
+
+    content.Raw := TBase64UrlEncoder.Encode(Format(msg, [myEmail, myEmail]));
+    response := send_request.Execute();
+    CheckEquals(response.Id, GetMessageId(subj));
+
+    delete_request := GetService().Users.Messages.Delete('me', response.Id);
+    delete_request.Execute();
+
+    CheckEquals('', GetMessageId(subj));
+  finally
+    response.Free();
+    delete_request.Free();
+    send_request.Free();
+  end;
+end;
+
+{ TUsersTests }
+
+procedure TUsersTests.TestGetProfile;
+var
+  request: TUsersGetProfileRequest;
+  response: TProfile;
+begin
+  request := nil;
+  response := nil;
+  try
+    request := GetService().Users.GetProfile('me');
+
+    response := request.Execute();
+
+    CheckNotEquals('', response.EmailAddress);
+    CheckNotEquals('', response.MessagesTotal);
+    CheckNotEquals('', response.ThreadsTotal);
+    CheckNotEquals('', response.HistoryId);
+  finally
+    response.Free();
+    request.Free();
+  end;
+end;
+
 initialization
+  TestFramework.RegisterTest(TUsersTests.Suite);
   TestFramework.RegisterTest(TLabelsTests.Suite);
   TestFramework.RegisterTest(TMessagesTests.Suite);
+
+finalization
+  Service.Free();
 
 end.

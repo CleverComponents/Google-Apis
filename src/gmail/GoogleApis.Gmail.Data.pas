@@ -37,8 +37,28 @@ uses
   System.Classes, System.SysUtils, System.Generics.Collections, clJsonSerializerBase, GoogleApis;
 
 type
+  TProfile = class
+  strict private
+    FEmailAddress: string;
+    FMessagesTotal: string;
+    FThreadsTotal: string;
+    FHistoryId: string;
+  public
+    [TclJsonString('emailAddress')]
+    property EmailAddress: string read FEmailAddress write FEmailAddress;
+
+    [TclJsonProperty('messagesTotal')]
+    property MessagesTotal: string read FMessagesTotal write FMessagesTotal;
+
+    [TclJsonProperty('threadsTotal')]
+    property ThreadsTotal: string read FThreadsTotal write FThreadsTotal;
+
+    [TclJsonString('historyId')]
+    property HistoryId: string read FHistoryId write FHistoryId;
+  end;
+
   TLabelColor = class
-  private
+  strict private
     FTextColor: string;
     FBackgroundColor: string;
   public
@@ -50,7 +70,7 @@ type
   end;
 
   TLabel = class
-  private
+  strict private
     FName: string;
     FType_: string;
     FColor: TLabelColor;
