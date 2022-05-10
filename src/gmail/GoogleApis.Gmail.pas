@@ -193,6 +193,26 @@ type
     property Id: string read FId;
   end;
 
+  TMessagesTrashRequest = class(TServiceRequest<TMessage>)
+  strict private
+    FUserId: string;
+    FId: string;
+  strict protected
+    function GetUrl: string; virtual;
+  public
+    constructor Create(AService: TService; const AUserId, AId: string);
+
+    function Execute: TMessage; override;
+
+    property UserId: string read FUserId;
+    property Id: string read FId;
+  end;
+
+  TMessagesUntrashRequest = class(TMessagesTrashRequest)
+  strict protected
+    function GetUrl: string; override;
+  end;
+
   TGmailResource = class
   strict private
     FService: TService;
@@ -223,8 +243,8 @@ type
     function List(const AUserId: string): TMessagesListRequest; virtual;
     //function modify
     function Send(const AUserId: string; AContent: TMessage): TMessagesSendRequest; virtual;
-    //function trash
-    //function untrash
+    function Trash(const AUserId, AId: string): TMessagesTrashRequest; virtual;
+    function Untrash(const AUserId, AId: string): TMessagesUntrashRequest; virtual;
   end;
 
   TUsersResource = class(TGmailResource)
@@ -598,6 +618,16 @@ begin
   Result := TMessagesSendRequest.Create(Service, AUserId, AContent);
 end;
 
+function TMessagesResource.Trash(const AUserId, AId: string): TMessagesTrashRequest;
+begin
+  Result := TMessagesTrashRequest.Create(Service, AUserId, AId);
+end;
+
+function TMessagesResource.Untrash(const AUserId, AId: string): TMessagesUntrashRequest;
+begin
+  Result := TMessagesUntrashRequest.Create(Service, AUserId, AId);
+end;
+
 { TMessagesListRequest }
 
 constructor TMessagesListRequest.Create(AService: TService; const AUserId: string);
@@ -753,6 +783,43 @@ begin
   Service.Initializer.HttpClient.Delete(
     'https://gmail.googleapis.com/gmail/v1/users/' + UserId + '/messages/' + Id);
   Result := True;
+end;
+
+{ TMessagesTrashRequest }
+
+constructor TMessagesTrashRequest.Create(AService: TService; const AUserId, AId: string);
+begin
+  inherited Create(AService);
+
+  FUserId := AUserId;
+  FId := AId;
+end;
+
+function TMessagesTrashRequest.Execute: TMessage;
+var
+  response: string;
+  params: THttpRequestParameterList;
+begin
+  params := THttpRequestParameterList.Create();
+  try
+    response := Service.Initializer.HttpClient.Post(GetUrl(), params, '');
+
+    Result := TMessage(Service.Initializer.JsonSerializer.JsonToObject(TMessage, response));
+  finally
+    params.Free();
+  end;
+end;
+
+function TMessagesTrashRequest.GetUrl: string;
+begin
+  Result := 'https://gmail.googleapis.com/gmail/v1/users/' + UserId + '/messages/' + Id + '/trash';
+end;
+
+{ TMessagesUntrashRequest }
+
+function TMessagesUntrashRequest.GetUrl: string;
+begin
+  Result := 'https://gmail.googleapis.com/gmail/v1/users/' + UserId + '/messages/' + Id + '/untrash';
 end;
 
 end.

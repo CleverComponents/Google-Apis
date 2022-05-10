@@ -34,7 +34,8 @@ unit GoogleApis.Gmail.Tests;
 interface
 
 uses
-  System.Classes, System.SysUtils, System.Generics.Collections, TestFramework,
+  System.Classes, System.SysUtils, System.Generics.Collections,
+  System.Generics.Defaults, TestFramework,
   GoogleApis, GoogleApis.Persister, GoogleApis.Gmail, GoogleApis.Gmail.Data;
 
 type
@@ -58,6 +59,7 @@ type
     procedure TestList;
     procedure TestGet;
     procedure TestSend;
+    procedure TestTrash;
   end;
 
 implementation
@@ -363,6 +365,40 @@ begin
     response.Free();
     delete_request.Free();
     send_request.Free();
+  end;
+end;
+
+procedure TMessagesTests.TestTrash;
+var
+  request: TMessagesTrashRequest;
+  response: TMessage;
+  id: string;
+  ind: Integer;
+  arr: TArray<string>;
+begin
+  request := nil;
+  response := nil;
+  try
+    id := GetMessageId();
+
+    request := GetService().Users.Messages.Trash('me', id);
+    response := request.Execute();
+    arr := response.LabelIds;
+    TArray.Sort<string>(arr, TStringComparer.Ordinal);
+    CheckTrue(TArray.BinarySearch<string>(arr, 'TRASH', ind));
+    FreeAndNil(response);
+    FreeAndNil(request);
+
+    request := GetService().Users.Messages.Untrash('me', id);
+    response := request.Execute();
+    arr := response.LabelIds;
+    TArray.Sort<string>(arr, TStringComparer.Ordinal);
+    CheckFalse(TArray.BinarySearch<string>(arr, 'TRASH', ind));
+    FreeAndNil(response);
+    FreeAndNil(request);
+  finally
+    response.Free();
+    request.Free();
   end;
 end;
 
