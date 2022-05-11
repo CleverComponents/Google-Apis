@@ -35,7 +35,7 @@ interface
 
 uses
   System.Classes, System.SysUtils, System.Contnrs, GoogleApis, GoogleApis.Gmail.Data,
-  GoogleApis.Gmail.Resource;
+  GoogleApis.Gmail.Core;
 
 type
   TLabelsListRequest = class(TServiceRequest<TLabels>)

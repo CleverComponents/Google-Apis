@@ -35,7 +35,7 @@ interface
 
 uses
   System.Classes, System.SysUtils, System.Contnrs, GoogleApis, GoogleApis.Gmail.Data,
-  GoogleApis.Gmail.Resource;
+  GoogleApis.Gmail.Core;
 
 type
   TMessagesListRequest = class(TServiceRequest<TMessages>)
@@ -241,11 +241,11 @@ type
     function Untrash(const AUserId, AId: string): TMessagesUntrashRequest; virtual;
   end;
 
-implementation
-
 const
   Formats: array[TFormat] of string = ('minimal', 'full', 'raw', 'metadata');
   InternalDateSources: array[TInternalDateSource] of string = ('receivedTime', 'dateHeader');
+
+implementation
 
 { TMessagesListRequest }
 
@@ -263,7 +263,8 @@ begin
   params := THttpRequestParameterList.Create();
   try
     FillParams(params);
-    response := Service.Initializer.HttpClient.Get('https://gmail.googleapis.com/gmail/v1/users/' + UserId + '/messages', params);
+    response := Service.Initializer.HttpClient.Get(
+      'https://gmail.googleapis.com/gmail/v1/users/' + UserId + '/messages', params);
     Result := TMessages(Service.Initializer.JsonSerializer.JsonToObject(TMessages, response));
   finally
     params.Free();

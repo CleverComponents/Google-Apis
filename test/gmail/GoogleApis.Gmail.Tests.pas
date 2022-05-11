@@ -37,7 +37,8 @@ uses
   System.Classes, System.SysUtils, System.Generics.Collections,
   System.Generics.Defaults, TestFramework,
   GoogleApis, GoogleApis.Persister, GoogleApis.Gmail, GoogleApis.Gmail.Data,
-  GoogleApis.Gmail.Users, GoogleApis.Gmail.Labels, GoogleApis.Gmail.Messages;
+  GoogleApis.Gmail.Users, GoogleApis.Gmail.Labels, GoogleApis.Gmail.Messages,
+  GoogleApis.Gmail.Drafts;
 
 type
   TUsersTests = class(TTestCase)
@@ -53,9 +54,9 @@ type
   end;
 
   TMessagesTests = class(TTestCase)
-  strict private
-    function GetMessageId(const ASubject: string = ''): string;
-    function GetMyEmail: string;
+  public
+    class function GetMessageId(const ASubject: string = ''): string;
+    class function GetMyEmail: string;
   published
     procedure TestList;
     procedure TestGet;
@@ -66,6 +67,17 @@ type
     procedure TestImport;
     procedure TestBatchDelete;
     procedure TestBatchModify;
+  end;
+
+  TDraftsTests = class(TTestCase)
+  strict private
+    function CreateDraft(const AMsg: string): string;
+  published
+    procedure TestDelete;
+    procedure TestGet;
+    procedure TestUpdate;
+    procedure TestList;
+    procedure TestSend;
   end;
 
 implementation
@@ -201,7 +213,7 @@ end;
 
 { TMessagesTests }
 
-function TMessagesTests.GetMessageId(const ASubject: string): string;
+class function TMessagesTests.GetMessageId(const ASubject: string): string;
 var
   request: TMessagesListRequest;
   response: TMessages;
@@ -232,7 +244,7 @@ begin
   end;
 end;
 
-function TMessagesTests.GetMyEmail: string;
+class function TMessagesTests.GetMyEmail: string;
 var
   request: TUsersGetProfileRequest;
   response: TProfile;
@@ -251,7 +263,7 @@ end;
 
 procedure TMessagesTests.TestBatchDelete;
 const
-  subj = 'F50AE5AE-685E-4C50-BD71-DBBFB74C8F9E-batchdelete';
+  subj = '9CB792EB-611E-4800-B79D-C659EA60DED8-msg-batchdelete';
 
   msg =
 'Subject: ' + subj + #$D#$A +
@@ -382,7 +394,7 @@ end;
 
 procedure TMessagesTests.TestImport;
 const
-  subj = '157194AC-D866-41C1-BDB1-3108A92B32F1-import';
+  subj = '9CB792EB-611E-4800-B79D-C659EA60DED8-msg-import';
 
   msg =
 'From: %s'#$D#$A +
@@ -427,7 +439,7 @@ end;
 
 procedure TMessagesTests.TestInsert;
 const
-  subj = '472E7906-2C7D-4BE6-9CBF-0A8132C94352-insert';
+  subj = '9CB792EB-611E-4800-B79D-C659EA60DED8-msg-insert';
 
   msg =
 'Subject: ' + subj + #$D#$A +
@@ -539,7 +551,7 @@ end;
 
 procedure TMessagesTests.TestSend;
 const
-  subj = 'D2898DF6-2B2E-49A4-9FD4-A41E79B091AF-send';
+  subj = '9CB792EB-611E-4800-B79D-C659EA60DED8-msg-send';
 
   msg =
 'From: %s'#$D#$A +
@@ -638,10 +650,241 @@ begin
   end;
 end;
 
+{ TDraftsTests }
+
+function TDraftsTests.CreateDraft(const AMsg: string): string;
+var
+  request: TDraftsCreateRequest;
+  response: TDraft;
+  ind: Integer;
+  arr: TArray<string>;
+begin
+  request := nil;
+  response := nil;
+  try
+    request := GetService().Users.Drafts.Create_('me', TDraft.Create());
+
+    request.Content.Message_ := TMessage.Create();
+    request.Content.Message_.Raw := TBase64UrlEncoder.Encode(AMsg);
+    response := request.Execute();
+    CheckNotEquals('', response.Id);
+
+    arr := response.Message_.LabelIds;
+    TArray.Sort<string>(arr, TStringComparer.Ordinal);
+    CheckTrue(TArray.BinarySearch<string>(arr, 'DRAFT', ind));
+
+    Result := response.Id;
+  finally
+    response.Free();
+    request.Free();
+  end;
+end;
+
+procedure TDraftsTests.TestDelete;
+const
+  subj = '9CB792EB-611E-4800-B79D-C659EA60DED8-draft-create';
+
+  msg =
+'Subject: ' + subj + #$D#$A +
+'MIME-Version: 1.0'#$D#$A +
+'Content-Type: text/plain'#$D#$A +
+#$D#$A +
+'Create draft from gmail api for Delphi'#$D#$A;
+
+var
+  request: TDraftsDeleteRequest;
+  id: string;
+begin
+  request := nil;
+  try
+    id := CreateDraft(msg);
+    request := GetService().Users.Drafts.Delete('me', id);
+    request.Execute();
+  finally
+    request.Free();
+  end;
+end;
+
+procedure TDraftsTests.TestGet;
+const
+  subj = '9CB792EB-611E-4800-B79D-C659EA60DED8-draft-get';
+
+  msg =
+'Subject: ' + subj + #$D#$A +
+'MIME-Version: 1.0'#$D#$A +
+'Content-Type: text/plain'#$D#$A +
+#$D#$A +
+'Get draft from gmail api for Delphi'#$D#$A;
+
+var
+  get_request: TDraftsGetRequest;
+  delete_request: TDraftsDeleteRequest;
+  response: TDraft;
+  id: string;
+begin
+  get_request := nil;
+  delete_request := nil;
+  response := nil;
+  try
+    id := CreateDraft(msg);
+
+    get_request := GetService().Users.Drafts.Get('me', id);
+    get_request.Format := mfRaw;
+    response := get_request.Execute();
+    CheckEquals(id, response.Id);
+    CheckTrue(nil <> response.Message_);
+    CheckNotEquals('', response.Message_.Raw);
+    FreeAndNil(response);
+
+    delete_request := GetService().Users.Drafts.Delete('me', id);
+    delete_request.Execute();
+  finally
+    response.Free();
+    delete_request.Free();
+    get_request.Free();
+  end;
+end;
+
+procedure TDraftsTests.TestList;
+const
+  subj = '9CB792EB-611E-4800-B79D-C659EA60DED8-draft-list';
+
+  msg =
+'Subject: ' + subj + #$D#$A +
+'MIME-Version: 1.0'#$D#$A +
+'Content-Type: text/plain'#$D#$A +
+#$D#$A +
+'List drafts from gmail api for Delphi'#$D#$A;
+
+var
+  list_request: TDraftsListRequest;
+  delete_request: TDraftsDeleteRequest;
+  create_response: TDraft;
+  list_response: TDrafts;
+  id: string;
+begin
+  list_request := nil;
+  delete_request := nil;
+  create_response := nil;
+  list_response := nil;
+  try
+    id := CreateDraft(msg);
+
+    list_request := GetService().Users.Drafts.List('me');
+    list_request.Q := 'subject:' + subj;
+    list_response := list_request.Execute();
+    CheckEquals(1, Length(list_response.Drafts));
+    CheckEquals(id, list_response.Drafts[0].Id);
+    FreeAndNil(list_response);
+
+    delete_request := GetService().Users.Drafts.Delete('me', id);
+    delete_request.Execute();
+  finally
+    list_response.Free();
+    create_response.Free();
+    delete_request.Free();
+    list_request.Free();
+  end;
+end;
+
+procedure TDraftsTests.TestSend;
+const
+  subj = '9CB792EB-611E-4800-B79D-C659EA60DED8-draft-send';
+
+  msg =
+'From: %s'#$D#$A +
+'To: %s'#$D#$A +
+'Subject: ' + subj + #$D#$A +
+'MIME-Version: 1.0'#$D#$A +
+'Content-Type: text/plain'#$D#$A +
+#$D#$A +
+'Send draft from gmail api for Delphi'#$D#$A;
+
+var
+  send_request: TDraftsSendRequest;
+  delete_request: TMessagesDeleteRequest;
+  response: TMessage;
+  id, myEmail: string;
+begin
+  myEmail := TMessagesTests.GetMyEmail();
+
+  send_request := nil;
+  delete_request := nil;
+  response := nil;
+  try
+    id := CreateDraft(Format(msg, [myEmail, myEmail]));
+
+    send_request := GetService().Users.Drafts.Send('me', TDraft.Create());
+    send_request.Content.Id := id;
+    response := send_request.Execute();
+
+    id := TMessagesTests.GetMessageId(subj);
+    CheckEquals(response.Id, id);
+
+    delete_request := GetService().Users.Messages.Delete('me', id);
+    delete_request.Execute();
+  finally
+    response.Free();
+    delete_request.Free();
+    send_request.Free();
+  end;
+end;
+
+procedure TDraftsTests.TestUpdate;
+const
+  subj = '9CB792EB-611E-4800-B79D-C659EA60DED8-draft-update';
+
+  msg =
+'Subject: ' + subj + #$D#$A +
+'MIME-Version: 1.0'#$D#$A +
+'Content-Type: text/plain'#$D#$A +
+#$D#$A +
+'Update draft from gmail api for Delphi'#$D#$A;
+
+var
+  update_request: TDraftsUpdateRequest;
+  get_request: TDraftsGetRequest;
+  delete_request: TDraftsDeleteRequest;
+  response: TDraft;
+  id, raw: string;
+begin
+  update_request := nil;
+  get_request := nil;
+  delete_request := nil;
+  response := nil;
+  try
+    id := CreateDraft(msg);
+
+    update_request := GetService().Users.Drafts.Update('me', id, TDraft.Create());
+    update_request.Content.Message_ := TMessage.Create();
+    update_request.Content.Message_.Raw := TBase64UrlEncoder.Encode(msg + 'MODIFIED'#$D#$A);
+    response := update_request.Execute();
+    CheckEquals(id, response.Id);
+    FreeAndNil(response);
+
+    get_request := GetService().Users.Drafts.Get('me', id);
+    get_request.Format := mfRaw;
+    response := get_request.Execute();
+    CheckTrue(nil <> response.Message_);
+    raw := TBase64UrlEncoder.Decode(response.Message_.Raw);
+    CheckTrue(Pos('MODIFIED', raw) > 0);
+    FreeAndNil(response);
+
+    delete_request := GetService().Users.Drafts.Delete('me', id);
+    delete_request.Execute();
+  finally
+    response.Free();
+    delete_request.Free();
+    get_request.Free();
+    update_request.Free();
+  end;
+end;
+
 initialization
   TestFramework.RegisterTest(TUsersTests.Suite);
   TestFramework.RegisterTest(TLabelsTests.Suite);
   TestFramework.RegisterTest(TMessagesTests.Suite);
+  TestFramework.RegisterTest(TDraftsTests.Suite);
 
 finalization
   Service.Free();

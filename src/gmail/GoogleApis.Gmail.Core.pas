@@ -29,7 +29,7 @@
   first may free it from dependence on the non-free library.
 }
 
-unit GoogleApis.Gmail.Resource;
+unit GoogleApis.Gmail.Core;
 
 interface
 

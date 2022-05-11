@@ -276,6 +276,27 @@ type
     property Message_: TMessage read FMessage_ write SetMessage_;
   end;
 
+  TDrafts = class
+  private
+    FNextPageToken: string;
+    FDrafts: TArray<TDraft>;
+    FResultSizeEstimate: Integer;
+
+    procedure SetDrafts(const Value: TArray<TDraft>);
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    [TclJsonProperty('drafts')]
+    property Drafts: TArray<TDraft> read FDrafts write SetDrafts;
+
+    [TclJsonString('nextPageToken')]
+    property NextPageToken: string read FNextPageToken write FNextPageToken;
+
+    [TclJsonProperty('resultSizeEstimate')]
+    property ResultSizeEstimate: Integer read FResultSizeEstimate write FResultSizeEstimate;
+  end;
+
   TModifyMessageRequest = class
   strict private
     FAddLabelIds: TArray<string>;
@@ -486,6 +507,34 @@ procedure TDraft.SetMessage_(const Value: TMessage);
 begin
   FMessage_.Free();
   FMessage_ := Value;
+end;
+
+{ TDrafts }
+
+constructor TDrafts.Create;
+begin
+  inherited Create();
+  FDrafts := nil;
+end;
+
+destructor TDrafts.Destroy;
+begin
+  SetDrafts(nil);
+  inherited Destroy();
+end;
+
+procedure TDrafts.SetDrafts(const Value: TArray<TDraft>);
+var
+  obj: TObject;
+begin
+  if (FDrafts <> nil) then
+  begin
+    for obj in FDrafts do
+    begin
+      obj.Free();
+    end;
+  end;
+  FDrafts := Value;
 end;
 
 end.

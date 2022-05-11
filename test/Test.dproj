@@ -99,7 +99,7 @@
         <DCCReference Include="gmail\GoogleApis.Gmail.Tests.pas"/>
         <DCCReference Include="..\src\gmail\GoogleApis.Gmail.Labels.pas"/>
         <DCCReference Include="..\src\gmail\GoogleApis.Gmail.Messages.pas"/>
-        <DCCReference Include="..\src\gmail\GoogleApis.Gmail.Resource.pas"/>
+        <DCCReference Include="..\src\gmail\GoogleApis.Gmail.Core.pas"/>
         <DCCReference Include="..\src\gmail\GoogleApis.Gmail.Users.pas"/>
         <DCCReference Include="..\src\gmail\GoogleApis.Gmail.Drafts.pas"/>
         <BuildConfiguration Include="Release">

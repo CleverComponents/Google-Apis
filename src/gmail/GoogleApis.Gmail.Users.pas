@@ -35,7 +35,7 @@ interface
 
 uses
   System.Classes, System.SysUtils, System.Contnrs, GoogleApis, GoogleApis.Gmail.Data,
-  GoogleApis.Gmail.Resource, GoogleApis.Gmail.Labels, GoogleApis.Gmail.Messages,
+  GoogleApis.Gmail.Core, GoogleApis.Gmail.Labels, GoogleApis.Gmail.Messages,
   GoogleApis.Gmail.Drafts;
 
 type

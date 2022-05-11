@@ -27,7 +27,7 @@ uses
   GoogleApis.Gmail.Tests in 'gmail\GoogleApis.Gmail.Tests.pas',
   GoogleApis.Gmail.Labels in '..\src\gmail\GoogleApis.Gmail.Labels.pas',
   GoogleApis.Gmail.Messages in '..\src\gmail\GoogleApis.Gmail.Messages.pas',
-  GoogleApis.Gmail.Resource in '..\src\gmail\GoogleApis.Gmail.Resource.pas',
+  GoogleApis.Gmail.Core in '..\src\gmail\GoogleApis.Gmail.Core.pas',
   GoogleApis.Gmail.Users in '..\src\gmail\GoogleApis.Gmail.Users.pas',
   GoogleApis.Gmail.Drafts in '..\src\gmail\GoogleApis.Gmail.Drafts.pas';
 

@@ -35,7 +35,7 @@ interface
 
 uses
   System.Classes, System.SysUtils, System.Contnrs, GoogleApis, GoogleApis.Gmail.Data,
-  GoogleApis.Gmail.Resource;
+  GoogleApis.Gmail.Core, GoogleApis.Gmail.Messages;
 
 type
   TDraftsCreateRequest = class(TServiceRequest<TDraft>)
@@ -65,14 +65,84 @@ type
     property Id: string read FId;
   end;
 
+  TDraftsGetRequest = class(TServiceRequest<TDraft>)
+  strict private
+    FUserId: string;
+    FId: string;
+    FFormat: TFormat;
+
+    procedure FillParams(AParams: THttpRequestParameterList);
+  public
+    constructor Create(AService: TService; const AUserId, AId: string);
+
+    function Execute: TDraft; override;
+
+    property UserId: string read FUserId;
+    property Id: string read FId;
+
+    property Format: TFormat read FFormat write FFormat;
+  end;
+
+  TDraftsUpdateRequest = class(TServiceRequest<TDraft>)
+  strict private
+    FUserId: string;
+    FId: string;
+    FContent: TDraft;
+  public
+    constructor Create(AService: TService; const AUserId, AId: string; AContent: TDraft);
+    destructor Destroy; override;
+
+    function Execute: TDraft; override;
+
+    property UserId: string read FUserId;
+    property Id: string read FId;
+    property Content: TDraft read FContent;
+  end;
+
+  TDraftsListRequest = class(TServiceRequest<TDrafts>)
+  strict private
+    FIncludeSpamTrash: Boolean;
+    FUserId: string;
+    FPageToken: string;
+    FMaxResults: Integer;
+    FQ: string;
+
+    procedure FillParams(AParams: THttpRequestParameterList);
+  public
+    constructor Create(AService: TService; const AUserId: string);
+
+    function Execute: TDrafts; override;
+
+    property UserId: string read FUserId;
+
+    property MaxResults: Integer read FMaxResults write FMaxResults;
+    property PageToken: string read FPageToken write FPageToken;
+    property Q: string read FQ write FQ;
+    property IncludeSpamTrash: Boolean read FIncludeSpamTrash write FIncludeSpamTrash;
+  end;
+
+  TDraftsSendRequest = class(TServiceRequest<TMessage>)
+  private
+    FUserId: string;
+    FContent: TDraft;
+  public
+    constructor Create(AService: TService; const AUserId: string; AContent: TDraft);
+    destructor Destroy; override;
+
+    function Execute: TMessage; override;
+
+    property UserId: string read FUserId;
+    property Content: TDraft read FContent;
+  end;
+
   TDraftsResource = class(TGmailResource)
   public
     function Create_(const AUserId: string; AContent: TDraft): TDraftsCreateRequest; virtual;
     function Delete(const AUserId, AId: string): TDraftsDeleteRequest;
-    //function get
-    //function list
-    //function send
-    //function update
+    function Get(const AUserId, AId: string): TDraftsGetRequest;
+    function List(const AUserId: string): TDraftsListRequest;
+    function Send(const AUserId: string; AContent: TDraft): TDraftsSendRequest; virtual;
+    function Update(const AUserId, AId: string; AContent: TDraft): TDraftsUpdateRequest;
   end;
 
 implementation
@@ -87,6 +157,26 @@ end;
 function TDraftsResource.Delete(const AUserId, AId: string): TDraftsDeleteRequest;
 begin
   Result := TDraftsDeleteRequest.Create(Service, AUserId, AId);
+end;
+
+function TDraftsResource.Get(const AUserId, AId: string): TDraftsGetRequest;
+begin
+  Result := TDraftsGetRequest.Create(Service, AUserId, AId);
+end;
+
+function TDraftsResource.List(const AUserId: string): TDraftsListRequest;
+begin
+  Result := TDraftsListRequest.Create(Service, AUserId);
+end;
+
+function TDraftsResource.Send(const AUserId: string; AContent: TDraft): TDraftsSendRequest;
+begin
+  Result := TDraftsSendRequest.Create(Service, AUserId, AContent);
+end;
+
+function TDraftsResource.Update(const AUserId, AId: string; AContent: TDraft): TDraftsUpdateRequest;
+begin
+  Result := TDraftsUpdateRequest.Create(Service, AUserId, AId, AContent);
 end;
 
 { TDraftsCreateRequest }
@@ -138,6 +228,138 @@ begin
   Service.Initializer.HttpClient.Delete(
     'https://gmail.googleapis.com/gmail/v1/users/' + UserId + '/drafts/' + Id);
   Result := True;
+end;
+
+{ TDraftsGetRequest }
+
+constructor TDraftsGetRequest.Create(AService: TService; const AUserId, AId: string);
+begin
+  inherited Create(AService);
+
+  FUserId := AUserId;
+  FId := AId;
+end;
+
+function TDraftsGetRequest.Execute: TDraft;
+var
+  response: string;
+  params: THttpRequestParameterList;
+begin
+  params := THttpRequestParameterList.Create();
+  try
+    FillParams(params);
+    response := Service.Initializer.HttpClient.Get(
+      'https://gmail.googleapis.com/gmail/v1/users/' + UserId + '/drafts/' + Id, params);
+    Result := TDraft(Service.Initializer.JsonSerializer.JsonToObject(TDraft, response));
+  finally
+    params.Free();
+  end;
+end;
+
+procedure TDraftsGetRequest.FillParams(AParams: THttpRequestParameterList);
+begin
+  AParams.Add('format', Formats[Format]);
+end;
+
+{ TDraftsUpdateRequest }
+
+constructor TDraftsUpdateRequest.Create(AService: TService; const AUserId, AId: string; AContent: TDraft);
+begin
+  inherited Create(AService);
+
+  FUserId := AUserId;
+  FId := AId;
+  FContent := AContent;
+end;
+
+destructor TDraftsUpdateRequest.Destroy;
+begin
+  FContent.Free();
+  inherited Destroy();
+end;
+
+function TDraftsUpdateRequest.Execute: TDraft;
+var
+  request, response: string;
+  params: THttpRequestParameterList;
+begin
+  params := THttpRequestParameterList.Create();
+  try
+    request := Service.Initializer.JsonSerializer.ObjectToJson(Content);
+
+    response := Service.Initializer.HttpClient.Put(
+      'https://gmail.googleapis.com/gmail/v1/users/' + UserId + '/drafts/' + Id, params, request);
+
+    Result := TDraft(Service.Initializer.JsonSerializer.JsonToObject(TDraft, response));
+  finally
+    params.Free();
+  end;
+end;
+
+{ TDraftsListRequest }
+
+constructor TDraftsListRequest.Create(AService: TService; const AUserId: string);
+begin
+  inherited Create(AService);
+  FUserId := AUserId;
+end;
+
+function TDraftsListRequest.Execute: TDrafts;
+var
+  response: string;
+  params: THttpRequestParameterList;
+begin
+  params := THttpRequestParameterList.Create();
+  try
+    FillParams(params);
+    response := Service.Initializer.HttpClient.Get(
+      'https://gmail.googleapis.com/gmail/v1/users/' + UserId + '/drafts', params);
+    Result := TDrafts(Service.Initializer.JsonSerializer.JsonToObject(TDrafts, response));
+  finally
+    params.Free();
+  end;
+end;
+
+procedure TDraftsListRequest.FillParams(AParams: THttpRequestParameterList);
+begin
+  AParams.Add('maxResults', maxResults);
+  AParams.Add('pageToken', PageToken);
+  AParams.Add('q', Q);
+  AParams.Add('includeSpamTrash', IncludeSpamTrash);
+end;
+
+{ TDraftsSendRequest }
+
+constructor TDraftsSendRequest.Create(AService: TService; const AUserId: string; AContent: TDraft);
+begin
+  inherited Create(AService);
+
+  FUserId := AUserId;
+  FContent := AContent;
+end;
+
+destructor TDraftsSendRequest.Destroy;
+begin
+  FContent.Free();
+  inherited Destroy();
+end;
+
+function TDraftsSendRequest.Execute: TMessage;
+var
+  request, response: string;
+  params: THttpRequestParameterList;
+begin
+  params := THttpRequestParameterList.Create();
+  try
+    request := Service.Initializer.JsonSerializer.ObjectToJson(Content);
+
+    response := Service.Initializer.HttpClient.Post(
+      'https://gmail.googleapis.com/gmail/v1/users/' + UserId + '/drafts/send', params, request);
+
+    Result := TMessage(Service.Initializer.JsonSerializer.JsonToObject(TMessage, response));
+  finally
+    params.Free();
+  end;
 end;
 
 end.
