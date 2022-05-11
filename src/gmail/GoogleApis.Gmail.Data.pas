@@ -259,6 +259,59 @@ type
     property ResultSizeEstimate: Integer read FResultSizeEstimate write FResultSizeEstimate;
   end;
 
+  TDraft = class
+  strict private
+    FId: string;
+    FMessage_: TMessage;
+
+    procedure SetMessage_(const Value: TMessage);
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    [TclJsonString('id')]
+    property Id: string read FId write FId;
+
+    [TclJsonProperty('message')]
+    property Message_: TMessage read FMessage_ write SetMessage_;
+  end;
+
+  TModifyMessageRequest = class
+  strict private
+    FAddLabelIds: TArray<string>;
+    FRemoveLabelIds: TArray<string>;
+  public
+    [TclJsonString('addLabelIds')]
+    property AddLabelIds: TArray<string> read FAddLabelIds write FAddLabelIds;
+
+    [TclJsonString('removeLabelIds')]
+    property RemoveLabelIds: TArray<string> read FRemoveLabelIds write FRemoveLabelIds;
+  end;
+
+  TBatchDeleteMessagesRequest = class
+  strict private
+    FIds: TArray<string>;
+  public
+    [TclJsonString('ids')]
+    property Ids: TArray<string> read FIds write FIds;
+  end;
+
+  TBatchModifyMessagesRequest = class
+  strict private
+    FIds: TArray<string>;
+    FRemoveLabelIds: TArray<string>;
+    FAddLabelIds: TArray<string>;
+  public
+    [TclJsonString('ids')]
+    property Ids: TArray<string> read FIds write FIds;
+
+    [TclJsonString('addLabelIds')]
+    property AddLabelIds: TArray<string> read FAddLabelIds write FAddLabelIds;
+
+    [TclJsonString('removeLabelIds')]
+    property RemoveLabelIds: TArray<string> read FRemoveLabelIds write FRemoveLabelIds;
+  end;
+
 implementation
 
 { TLabalList }
@@ -413,6 +466,26 @@ begin
   end;
 
   FParts := Value;
+end;
+
+{ TDraft }
+
+constructor TDraft.Create;
+begin
+  inherited Create();
+  FMessage_ := nil;
+end;
+
+destructor TDraft.Destroy;
+begin
+  FMessage_.Free();
+  inherited Destroy();
+end;
+
+procedure TDraft.SetMessage_(const Value: TMessage);
+begin
+  FMessage_.Free();
+  FMessage_ := Value;
 end;
 
 end.

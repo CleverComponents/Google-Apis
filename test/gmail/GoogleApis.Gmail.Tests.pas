@@ -36,7 +36,8 @@ interface
 uses
   System.Classes, System.SysUtils, System.Generics.Collections,
   System.Generics.Defaults, TestFramework,
-  GoogleApis, GoogleApis.Persister, GoogleApis.Gmail, GoogleApis.Gmail.Data;
+  GoogleApis, GoogleApis.Persister, GoogleApis.Gmail, GoogleApis.Gmail.Data,
+  GoogleApis.Gmail.Users, GoogleApis.Gmail.Labels, GoogleApis.Gmail.Messages;
 
 type
   TUsersTests = class(TTestCase)
@@ -60,6 +61,11 @@ type
     procedure TestGet;
     procedure TestSend;
     procedure TestTrash;
+    procedure TestModify;
+    procedure TestInsert;
+    procedure TestImport;
+    procedure TestBatchDelete;
+    procedure TestBatchModify;
   end;
 
 implementation
@@ -243,6 +249,82 @@ begin
   end;
 end;
 
+procedure TMessagesTests.TestBatchDelete;
+const
+  subj = 'F50AE5AE-685E-4C50-BD71-DBBFB74C8F9E-batchdelete';
+
+  msg =
+'Subject: ' + subj + #$D#$A +
+'MIME-Version: 1.0'#$D#$A +
+'Content-Type: text/plain'#$D#$A +
+#$D#$A +
+'Batch delete from gmail api for Delphi'#$D#$A;
+
+var
+  insert_request: TMessagesInsertRequest;
+  delete_request: TMessagesBatchDeleteRequest;
+  batch_content: TBatchDeleteMessagesRequest;
+  content, response: TMessage;
+  myEmail: string;
+begin
+  myEmail := GetMyEmail();
+
+  insert_request := nil;
+  delete_request := nil;
+  response := nil;
+  try
+    content := TMessage.Create();
+    insert_request := GetService().Users.Messages.Insert('me', content);
+
+    content.Raw := TBase64UrlEncoder.Encode(msg);
+    insert_request.InternalDateSource := miReceivedTime;
+    response := insert_request.Execute();
+
+    batch_content := TBatchDeleteMessagesRequest.Create();
+
+    batch_content.Ids := TArray<string>.Create(response.Id);
+
+    delete_request := GetService().Users.Messages.BatchDelete('me', batch_content);
+    delete_request.Execute();
+
+    CheckEquals('', GetMessageId(subj));
+  finally
+    response.Free();
+    delete_request.Free();
+    insert_request.Free();
+  end;
+end;
+
+procedure TMessagesTests.TestBatchModify;
+var
+  request: TMessagesBatchModifyRequest;
+  id: string;
+  content: TBatchModifyMessagesRequest;
+begin
+  request := nil;
+  try
+    id := GetMessageId();
+
+    content := TBatchModifyMessagesRequest.Create();
+    request := GetService().Users.Messages.BatchModify('me', content);
+    content.Ids := TArray<string>.Create(id);
+    content.AddLabelIds := TArray<string>.Create('TRASH');
+    content.RemoveLabelIds := TArray<string>.Create('INBOX');
+    request.Execute();
+    FreeAndNil(request);
+
+    content := TBatchModifyMessagesRequest.Create();
+    request := GetService().Users.Messages.BatchModify('me', content);
+    content.Ids := TArray<string>.Create(id);
+    content.AddLabelIds := TArray<string>.Create('INBOX');
+    content.RemoveLabelIds := TArray<string>.Create('TRASH');
+    request.Execute();
+    FreeAndNil(request);
+  finally
+    request.Free();
+  end;
+end;
+
 procedure TMessagesTests.TestGet;
 var
   request: TMessagesGetRequest;
@@ -298,6 +380,93 @@ begin
   end;
 end;
 
+procedure TMessagesTests.TestImport;
+const
+  subj = '157194AC-D866-41C1-BDB1-3108A92B32F1-import';
+
+  msg =
+'From: %s'#$D#$A +
+'To: %s'#$D#$A +
+'Subject: ' + subj + #$D#$A +
+'MIME-Version: 1.0'#$D#$A +
+'Content-Type: text/plain'#$D#$A +
+#$D#$A +
+'Import from gmail api for Delphi'#$D#$A;
+
+var
+  import_request: TMessagesImportRequest;
+  delete_request: TMessagesDeleteRequest;
+  content, response: TMessage;
+  myEmail: string;
+begin
+  myEmail := GetMyEmail();
+
+  import_request := nil;
+  delete_request := nil;
+  response := nil;
+  try
+    content := TMessage.Create();
+    import_request := GetService().Users.Messages.Import('me', content);
+    import_request.InternalDateSource := miReceivedTime;
+    import_request.NeverMarkSpam := True;
+
+    content.Raw := TBase64UrlEncoder.Encode(Format(msg, [myEmail, myEmail]));
+    response := import_request.Execute();
+    CheckEquals(response.Id, GetMessageId(subj));
+
+    delete_request := GetService().Users.Messages.Delete('me', response.Id);
+    delete_request.Execute();
+
+    CheckEquals('', GetMessageId(subj));
+  finally
+    response.Free();
+    delete_request.Free();
+    import_request.Free();
+  end;
+end;
+
+procedure TMessagesTests.TestInsert;
+const
+  subj = '472E7906-2C7D-4BE6-9CBF-0A8132C94352-insert';
+
+  msg =
+'Subject: ' + subj + #$D#$A +
+'MIME-Version: 1.0'#$D#$A +
+'Content-Type: text/plain'#$D#$A +
+#$D#$A +
+'Insert from gmail api for Delphi'#$D#$A;
+
+var
+  insert_request: TMessagesInsertRequest;
+  delete_request: TMessagesDeleteRequest;
+  content, response: TMessage;
+  myEmail: string;
+begin
+  myEmail := GetMyEmail();
+
+  insert_request := nil;
+  delete_request := nil;
+  response := nil;
+  try
+    content := TMessage.Create();
+    insert_request := GetService().Users.Messages.Insert('me', content);
+
+    content.Raw := TBase64UrlEncoder.Encode(msg);
+    insert_request.InternalDateSource := miReceivedTime;
+    response := insert_request.Execute();
+    CheckEquals(response.Id, GetMessageId(subj));
+
+    delete_request := GetService().Users.Messages.Delete('me', response.Id);
+    delete_request.Execute();
+
+    CheckEquals('', GetMessageId(subj));
+  finally
+    response.Free();
+    delete_request.Free();
+    insert_request.Free();
+  end;
+end;
+
 procedure TMessagesTests.TestList;
 var
   request: TMessagesListRequest;
@@ -325,9 +494,52 @@ begin
   end;
 end;
 
+procedure TMessagesTests.TestModify;
+var
+  request: TMessagesModifyRequest;
+  response: TMessage;
+  id: string;
+  ind: Integer;
+  arr: TArray<string>;
+  content: TModifyMessageRequest;
+begin
+  request := nil;
+  response := nil;
+  try
+    id := GetMessageId();
+
+    content := TModifyMessageRequest.Create();
+    request := GetService().Users.Messages.Modify('me', id, content);
+    content.AddLabelIds := TArray<string>.Create('TRASH');
+    content.RemoveLabelIds := TArray<string>.Create('INBOX');
+    response := request.Execute();
+    arr := response.LabelIds;
+    TArray.Sort<string>(arr, TStringComparer.Ordinal);
+    CheckTrue(TArray.BinarySearch<string>(arr, 'TRASH', ind));
+    CheckFalse(TArray.BinarySearch<string>(arr, 'INBOX', ind));
+    FreeAndNil(response);
+    FreeAndNil(request);
+
+    content := TModifyMessageRequest.Create();
+    request := GetService().Users.Messages.Modify('me', id, content);
+    content.AddLabelIds := TArray<string>.Create('INBOX');
+    content.RemoveLabelIds := TArray<string>.Create('TRASH');
+    response := request.Execute();
+    arr := response.LabelIds;
+    TArray.Sort<string>(arr, TStringComparer.Ordinal);
+    CheckFalse(TArray.BinarySearch<string>(arr, 'TRASH', ind));
+    CheckTrue(TArray.BinarySearch<string>(arr, 'INBOX', ind));
+    FreeAndNil(response);
+    FreeAndNil(request);
+  finally
+    response.Free();
+    request.Free();
+  end;
+end;
+
 procedure TMessagesTests.TestSend;
 const
-  subj = 'D2898DF6-2B2E-49A4-9FD4-A41E79B091AF';
+  subj = 'D2898DF6-2B2E-49A4-9FD4-A41E79B091AF-send';
 
   msg =
 'From: %s'#$D#$A +
