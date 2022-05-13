@@ -36,7 +36,7 @@ interface
 uses
   System.Classes, System.SysUtils, System.Contnrs, GoogleApis, GoogleApis.Gmail.Data,
   GoogleApis.Gmail.Core, GoogleApis.Gmail.Labels, GoogleApis.Gmail.Messages,
-  GoogleApis.Gmail.Drafts;
+  GoogleApis.Gmail.Drafts, GoogleApis.Gmail.History, GoogleApis.Gmail.Threads;
 
 type
   TUsersGetProfileRequest = class(TServiceRequest<TProfile>)
@@ -54,14 +54,21 @@ type
   strict private
     FLabels: TLabelsResource;
     FMessages: TMessagesResource;
+    FDrafts: TDraftsResource;
+    FHistory: THistoryResource;
+    FThreads: TThreadsResource;
 
     function GetLabels: TLabelsResource;
     function GetMessages: TMessagesResource;
-  strict
-  private
-    function GetDrafts: TDraftsResource; protected
+    function GetDrafts: TDraftsResource;
+    function GetHistory: THistoryResource;
+    function GetThreads: TThreadsResource;
+  strict protected
     function CreateLabels: TLabelsResource; virtual;
     function CreateMessages: TMessagesResource; virtual;
+    function CreateDrafts: TDraftsResource; virtual;
+    function CreateHistory: THistoryResource; virtual;
+    function CreateThreads: TThreadsResource; virtual;
   public
     constructor Create(AService: TService);
     destructor Destroy; override;
@@ -71,11 +78,11 @@ type
     //function watch
 
     property Drafts: TDraftsResource read GetDrafts;
-    //property History
+    property History: THistoryResource read GetHistory;
     property Labels: TLabelsResource read GetLabels;
     property Messages: TMessagesResource read GetMessages;
     //property Settings
-    //property Threads
+    property Threads: TThreadsResource read GetThreads;
   end;
 
 implementation
@@ -110,6 +117,18 @@ begin
 
   FLabels := nil;
   FMessages := nil;
+  FDrafts := nil;
+  FHistory := nil;
+end;
+
+function TUsersResource.CreateDrafts: TDraftsResource;
+begin
+  Result := TDraftsResource.Create(Service);
+end;
+
+function TUsersResource.CreateHistory: THistoryResource;
+begin
+  Result := THistoryResource.Create(Service);
 end;
 
 function TUsersResource.CreateLabels: TLabelsResource;
@@ -122,8 +141,16 @@ begin
   Result := TMessagesResource.Create(Service);
 end;
 
+function TUsersResource.CreateThreads: TThreadsResource;
+begin
+  Result := TThreadsResource.Create(Service);
+end;
+
 destructor TUsersResource.Destroy;
 begin
+  FreeAndNil(FThreads);
+  FreeAndNil(FHistory);
+  FreeAndNil(FDrafts);
   FreeAndNil(FMessages);
   FreeAndNil(FLabels);
 
@@ -132,7 +159,20 @@ end;
 
 function TUsersResource.GetDrafts: TDraftsResource;
 begin
-  Result := TDraftsResource.Create(Service);
+  if (FDrafts = nil) then
+  begin
+    FDrafts := CreateDrafts();
+  end;
+  Result := FDrafts;
+end;
+
+function TUsersResource.GetHistory: THistoryResource;
+begin
+  if (FHistory = nil) then
+  begin
+    FHistory := CreateHistory();
+  end;
+  Result := FHistory;
 end;
 
 function TUsersResource.GetLabels: TLabelsResource;
@@ -156,6 +196,15 @@ end;
 function TUsersResource.GetProfile(const AUserId: string): TUsersGetProfileRequest;
 begin
   Result := TUsersGetProfileRequest.Create(Service, AUserId);
+end;
+
+function TUsersResource.GetThreads: TThreadsResource;
+begin
+  if (FThreads = nil) then
+  begin
+    FThreads := CreateThreads();
+  end;
+  Result := FThreads;
 end;
 
 end.

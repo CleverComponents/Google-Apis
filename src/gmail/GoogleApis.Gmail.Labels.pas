@@ -38,13 +38,13 @@ uses
   GoogleApis.Gmail.Core;
 
 type
-  TLabelsListRequest = class(TServiceRequest<TLabels>)
+  TLabelsListRequest = class(TServiceRequest<TLabelsResponse>)
   strict private
     FUserId: string;
   public
     constructor Create(AService: TService; const AUserId: string);
 
-    function Execute: TLabels; override;
+    function Execute: TLabelsResponse; override;
 
     property UserId: string read FUserId;
   end;
@@ -113,7 +113,7 @@ type
   TLabelsResource = class(TGmailResource)
   public
     function Create_(const AUserId: string; AContent: TLabel): TLabelsCreateRequest; virtual;
-    function Delete(const AUserId, AId: string): TLabelsDeleteRequest;
+    function Delete(const AUserId, AId: string): TLabelsDeleteRequest; virtual;
     function Get(const AUserId, AId: string): TLabelsGetRequest; virtual;
     function List(const AUserId: string): TLabelsListRequest; virtual;
     function Patch(const AUserId, AId: string; AContent: TLabel): TLabelsPatchRequest; virtual;
@@ -130,7 +130,7 @@ begin
   FUserId := AUserId;
 end;
 
-function TLabelsListRequest.Execute: TLabels;
+function TLabelsListRequest.Execute: TLabelsResponse;
 var
   response: string;
   params: THttpRequestParameterList;
@@ -138,7 +138,7 @@ begin
   params := THttpRequestParameterList.Create();
   try
     response := Service.Initializer.HttpClient.Get('https://gmail.googleapis.com/gmail/v1/users/' + UserId + '/labels', params);
-    Result := TLabels(Service.Initializer.JsonSerializer.JsonToObject(TLabels, response));
+    Result := TLabelsResponse(Service.Initializer.JsonSerializer.JsonToObject(TLabelsResponse, response));
   finally
     params.Free();
   end;

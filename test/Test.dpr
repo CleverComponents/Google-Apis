@@ -29,11 +29,14 @@ uses
   GoogleApis.Gmail.Messages in '..\src\gmail\GoogleApis.Gmail.Messages.pas',
   GoogleApis.Gmail.Core in '..\src\gmail\GoogleApis.Gmail.Core.pas',
   GoogleApis.Gmail.Users in '..\src\gmail\GoogleApis.Gmail.Users.pas',
-  GoogleApis.Gmail.Drafts in '..\src\gmail\GoogleApis.Gmail.Drafts.pas';
+  GoogleApis.Gmail.Drafts in '..\src\gmail\GoogleApis.Gmail.Drafts.pas',
+  GoogleApis.Gmail.History in '..\src\gmail\GoogleApis.Gmail.History.pas',
+  GoogleApis.Gmail.Threads in '..\src\gmail\GoogleApis.Gmail.Threads.pas';
 
 {$R *.RES}
 
 begin
+  System.ReportMemoryLeaksOnShutdown := True;
   DUnitTestRunner.RunRegisteredTests;
 end.
 

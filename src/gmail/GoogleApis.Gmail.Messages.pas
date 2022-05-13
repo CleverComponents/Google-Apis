@@ -38,7 +38,7 @@ uses
   GoogleApis.Gmail.Core;
 
 type
-  TMessagesListRequest = class(TServiceRequest<TMessages>)
+  TMessagesListRequest = class(TServiceRequest<TMessagesResponse>)
   strict private
     FUserId: string;
     FIncludeSpamTrash: Boolean;
@@ -51,7 +51,7 @@ type
   public
     constructor Create(AService: TService; const AUserId: string);
 
-    function Execute: TMessages; override;
+    function Execute: TMessagesResponse; override;
 
     property UserId: string read FUserId;
 
@@ -242,8 +242,8 @@ type
   end;
 
 const
-  Formats: array[TFormat] of string = ('minimal', 'full', 'raw', 'metadata');
-  InternalDateSources: array[TInternalDateSource] of string = ('receivedTime', 'dateHeader');
+  FormatNames: array[TFormat] of string = ('minimal', 'full', 'raw', 'metadata');
+  InternalDateSourceNames: array[TInternalDateSource] of string = ('receivedTime', 'dateHeader');
 
 implementation
 
@@ -255,7 +255,7 @@ begin
   FUserId := AUserId;
 end;
 
-function TMessagesListRequest.Execute: TMessages;
+function TMessagesListRequest.Execute: TMessagesResponse;
 var
   response: string;
   params: THttpRequestParameterList;
@@ -265,7 +265,7 @@ begin
     FillParams(params);
     response := Service.Initializer.HttpClient.Get(
       'https://gmail.googleapis.com/gmail/v1/users/' + UserId + '/messages', params);
-    Result := TMessages(Service.Initializer.JsonSerializer.JsonToObject(TMessages, response));
+    Result := TMessagesResponse(Service.Initializer.JsonSerializer.JsonToObject(TMessagesResponse, response));
   finally
     params.Free();
   end;
@@ -275,7 +275,7 @@ procedure TMessagesListRequest.FillParams(AParams: THttpRequestParameterList);
 var
   id: string;
 begin
-  AParams.Add('maxResults', maxResults);
+  AParams.Add('maxResults', MaxResults);
   AParams.Add('pageToken', PageToken);
   AParams.Add('q', Q);
 
@@ -320,7 +320,7 @@ procedure TMessagesGetRequest.FillParams(AParams: THttpRequestParameterList);
 var
   hdr: string;
 begin
-  AParams.Add('format', Formats[Format]);
+  AParams.Add('format', FormatNames[Format]);
 
   if (MetadataHeaders <> nil) then
   begin
@@ -491,7 +491,7 @@ end;
 
 procedure TMessagesInsertRequest.FillParams(AParams: THttpRequestParameterList);
 begin
-  AParams.Add('internalDateSource', InternalDateSources[InternalDateSource]);
+  AParams.Add('internalDateSource', InternalDateSourceNames[InternalDateSource]);
   AParams.Add('deleted', Deleted);
 end;
 
@@ -530,7 +530,7 @@ end;
 
 procedure TMessagesImportRequest.FillParams(AParams: THttpRequestParameterList);
 begin
-  AParams.Add('internalDateSource', InternalDateSources[InternalDateSource]);
+  AParams.Add('internalDateSource', InternalDateSourceNames[InternalDateSource]);
   AParams.Add('neverMarkSpam', NeverMarkSpam);
   AParams.Add('processForCalendar', ProcessForCalendar);
   AParams.Add('deleted', Deleted);

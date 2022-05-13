@@ -118,7 +118,7 @@ type
     property Color: TLabelColor read FColor write SetColor;
   end;
 
-  TLabels = class
+  TLabelsResponse = class
   strict private
     FLabels: TArray<TLabel>;
     procedure SetLabels(const Value: TArray<TLabel>);
@@ -238,7 +238,7 @@ type
     property Raw: string read FRaw write FRaw;
   end;
 
-  TMessages = class
+  TMessagesResponse = class
   strict private
     FMessages: TArray<TMessage>;
     FNextPageToken: string;
@@ -276,7 +276,7 @@ type
     property Message_: TMessage read FMessage_ write SetMessage_;
   end;
 
-  TDrafts = class
+  TDraftsResponse = class
   private
     FNextPageToken: string;
     FDrafts: TArray<TDraft>;
@@ -333,23 +333,154 @@ type
     property RemoveLabelIds: TArray<string> read FRemoveLabelIds write FRemoveLabelIds;
   end;
 
+  TMessageAdded = class
+  strict private
+    FMessage_: TMessage;
+
+    procedure SetMessage_(const Value: TMessage);
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    [TclJsonProperty('message')]
+    property Message_: TMessage read FMessage_ write SetMessage_;
+  end;
+
+  TMessageDeleted = class(TMessageAdded);
+
+  TLabelAdded = class(TMessageAdded)
+  strict private
+    FLabelIds: TArray<string>;
+  public
+    [TclJsonString('labelIds')]
+    property LabelIds: TArray<string> read FLabelIds write FLabelIds;
+  end;
+
+  TLabelRemoved = class(TLabelAdded);
+
+  THistory = class
+  strict private
+    FId: string;
+    FMessages: TArray<TMessage>;
+    FLabelsAdded: TArray<TLabelAdded>;
+    FLabelsRemoved: TArray<TLabelRemoved>;
+    FMessagesDeleted: TArray<TMessageDeleted>;
+    FMessagesAdded: TArray<TMessageAdded>;
+
+    procedure SetMessages(const Value: TArray<TMessage>);
+    procedure SetLabelsAdded(const Value: TArray<TLabelAdded>);
+    procedure SetLabelsRemoved(const Value: TArray<TLabelRemoved>);
+    procedure SetMessagesAdded(const Value: TArray<TMessageAdded>);
+    procedure SetMessagesDeleted(const Value: TArray<TMessageDeleted>);
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    [TclJsonProperty('id')]
+    property Id: string read FId write FId;
+
+    [TclJsonProperty('messages')]
+    property Messages: TArray<TMessage> read FMessages write SetMessages;
+
+    [TclJsonProperty('messagesAdded')]
+    property MessagesAdded: TArray<TMessageAdded> read FMessagesAdded write SetMessagesAdded;
+
+    [TclJsonProperty('messagesDeleted')]
+    property MessagesDeleted: TArray<TMessageDeleted> read FMessagesDeleted write SetMessagesDeleted;
+
+    [TclJsonProperty('labelsAdded')]
+    property LabelsAdded: TArray<TLabelAdded> read FLabelsAdded write SetLabelsAdded;
+
+    [TclJsonProperty('labelsRemoved')]
+    property LabelsRemoved: TArray<TLabelRemoved> read FLabelsRemoved write SetLabelsRemoved;
+  end;
+
+  THistoryResponse = class
+  strict private
+    FHistory: TArray<THistory>;
+    FNextPageToken: string;
+    FHistoryId: string;
+
+    procedure SetHistory(const Value: TArray<THistory>);
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    [TclJsonProperty('history')]
+    property History: TArray<THistory> read FHistory write SetHistory;
+
+    [TclJsonString('nextPageToken')]
+    property NextPageToken: string read FNextPageToken write FNextPageToken;
+
+    [TclJsonProperty('historyId')]
+    property HistoryId: string read FHistoryId write FHistoryId;
+  end;
+
+  TThread = class
+  strict private
+    FMessages: TArray<TMessage>;
+    FId: string;
+    FHistoryId: string;
+    FSnippet: string;
+
+    procedure SetMessages(const Value: TArray<TMessage>);
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    [TclJsonString('id')]
+    property Id: string read FId write FId;
+
+    [TclJsonString('snippet')]
+    property Snippet: string read FSnippet write FSnippet;
+
+    [TclJsonProperty('historyId')]
+    property HistoryId: string read FHistoryId write FHistoryId;
+
+    [TclJsonProperty('messages')]
+    property Messages: TArray<TMessage> read FMessages write SetMessages;
+  end;
+
+  TThreadsResponse = class
+  strict private
+    FThreads: TArray<TThread>;
+    FNextPageToken: string;
+    FResultSizeEstimate: Integer;
+
+    procedure SetThreads(const Value: TArray<TThread>);
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    [TclJsonProperty('threads')]
+    property Threads: TArray<TThread> read FThreads write SetThreads;
+
+    [TclJsonString('nextPageToken')]
+    property NextPageToken: string read FNextPageToken write FNextPageToken;
+
+    [TclJsonProperty('resultSizeEstimate')]
+    property ResultSizeEstimate: Integer read FResultSizeEstimate write FResultSizeEstimate;
+  end;
+
+  TModifyThreadRequest = class(TModifyMessageRequest);
+
 implementation
 
 { TLabalList }
 
-constructor TLabels.Create;
+constructor TLabelsResponse.Create;
 begin
   inherited Create();
   FLabels := nil;
 end;
 
-destructor TLabels.Destroy;
+destructor TLabelsResponse.Destroy;
 begin
   SetLabels(nil);
   inherited Destroy();
 end;
 
-procedure TLabels.SetLabels(const Value: TArray<TLabel>);
+procedure TLabelsResponse.SetLabels(const Value: TArray<TLabel>);
 var
   obj: TObject;
 begin
@@ -384,21 +515,21 @@ begin
   FColor := Value;
 end;
 
-{ TMessages }
+{ TMessagesResponse }
 
-constructor TMessages.Create;
+constructor TMessagesResponse.Create;
 begin
   inherited Create();
   FMessages := nil;
 end;
 
-destructor TMessages.Destroy;
+destructor TMessagesResponse.Destroy;
 begin
   SetMessages(nil);
   inherited Destroy();
 end;
 
-procedure TMessages.SetMessages(const Value: TArray<TMessage>);
+procedure TMessagesResponse.SetMessages(const Value: TArray<TMessage>);
 var
   obj: TObject;
 begin
@@ -509,21 +640,21 @@ begin
   FMessage_ := Value;
 end;
 
-{ TDrafts }
+{ TDraftsResponse }
 
-constructor TDrafts.Create;
+constructor TDraftsResponse.Create;
 begin
   inherited Create();
   FDrafts := nil;
 end;
 
-destructor TDrafts.Destroy;
+destructor TDraftsResponse.Destroy;
 begin
   SetDrafts(nil);
   inherited Destroy();
 end;
 
-procedure TDrafts.SetDrafts(const Value: TArray<TDraft>);
+procedure TDraftsResponse.SetDrafts(const Value: TArray<TDraft>);
 var
   obj: TObject;
 begin
@@ -535,6 +666,204 @@ begin
     end;
   end;
   FDrafts := Value;
+end;
+
+{ THistoryResponse }
+
+constructor THistoryResponse.Create;
+begin
+  inherited Create();
+  FHistory := nil;
+end;
+
+destructor THistoryResponse.Destroy;
+begin
+  SetHistory(nil);
+  inherited Destroy();
+end;
+
+procedure THistoryResponse.SetHistory(const Value: TArray<THistory>);
+var
+  obj: TObject;
+begin
+  if (FHistory <> nil) then
+  begin
+    for obj in FHistory do
+    begin
+      obj.Free();
+    end;
+  end;
+  FHistory := Value;
+end;
+
+{ THistory }
+
+constructor THistory.Create;
+begin
+  inherited Create();
+
+  FMessages := nil;
+  FLabelsAdded := nil;
+  FLabelsRemoved := nil;
+  FMessagesDeleted := nil;
+  FMessagesAdded := nil;
+end;
+
+destructor THistory.Destroy;
+begin
+  SetMessagesAdded(nil);
+  SetMessagesDeleted(nil);
+  SetLabelsRemoved(nil);
+  SetLabelsAdded(nil);
+  SetMessages(nil);
+
+  inherited Destroy();
+end;
+
+procedure THistory.SetLabelsAdded(const Value: TArray<TLabelAdded>);
+var
+  obj: TObject;
+begin
+  if (FLabelsAdded <> nil) then
+  begin
+    for obj in FLabelsAdded do
+    begin
+      obj.Free();
+    end;
+  end;
+  FLabelsAdded := Value;
+end;
+
+procedure THistory.SetLabelsRemoved(const Value: TArray<TLabelRemoved>);
+var
+  obj: TObject;
+begin
+  if (FLabelsRemoved <> nil) then
+  begin
+    for obj in FLabelsRemoved do
+    begin
+      obj.Free();
+    end;
+  end;
+  FLabelsRemoved := Value;
+end;
+
+procedure THistory.SetMessages(const Value: TArray<TMessage>);
+var
+  obj: TObject;
+begin
+  if (FMessages <> nil) then
+  begin
+    for obj in FMessages do
+    begin
+      obj.Free();
+    end;
+  end;
+  FMessages := Value;
+end;
+
+procedure THistory.SetMessagesAdded(const Value: TArray<TMessageAdded>);
+var
+  obj: TObject;
+begin
+  if (FMessagesAdded <> nil) then
+  begin
+    for obj in FMessagesAdded do
+    begin
+      obj.Free();
+    end;
+  end;
+  FMessagesAdded := Value;
+end;
+
+procedure THistory.SetMessagesDeleted(const Value: TArray<TMessageDeleted>);
+var
+  obj: TObject;
+begin
+  if (FMessagesDeleted <> nil) then
+  begin
+    for obj in FMessagesDeleted do
+    begin
+      obj.Free();
+    end;
+  end;
+  FMessagesDeleted := Value;
+end;
+
+{ TMessageAdded }
+
+constructor TMessageAdded.Create;
+begin
+  inherited Create();
+  FMessage_ := nil;
+end;
+
+destructor TMessageAdded.Destroy;
+begin
+  FMessage_.Free();
+  inherited Destroy();
+end;
+
+procedure TMessageAdded.SetMessage_(const Value: TMessage);
+begin
+  FMessage_.Free();
+  FMessage_ := Value;
+end;
+
+{ TThreadsResponse }
+
+constructor TThreadsResponse.Create;
+begin
+  inherited Create();
+  FThreads := nil;
+end;
+
+destructor TThreadsResponse.Destroy;
+begin
+  SetThreads(nil);
+  inherited Destroy();
+end;
+
+procedure TThreadsResponse.SetThreads(const Value: TArray<TThread>);
+var
+  obj: TObject;
+begin
+  if (FThreads <> nil) then
+  begin
+    for obj in FThreads do
+    begin
+      obj.Free();
+    end;
+  end;
+  FThreads := Value;
+end;
+
+{ TThread }
+
+constructor TThread.Create;
+begin
+  inherited Create();
+  FMessages := nil;
+end;
+
+destructor TThread.Destroy;
+begin
+  SetMessages(nil);
+  inherited Destroy();
+end;
+
+procedure TThread.SetMessages(const Value: TArray<TMessage>);
+var
+  obj: TObject;
+begin
+  if (FMessages <> nil) then
+  begin
+    for obj in FMessages do
+    begin
+      obj.Free();
+    end;
+  end;
+  FMessages := Value;
 end;
 
 end.

@@ -99,7 +99,7 @@ type
     property Content: TDraft read FContent;
   end;
 
-  TDraftsListRequest = class(TServiceRequest<TDrafts>)
+  TDraftsListRequest = class(TServiceRequest<TDraftsResponse>)
   strict private
     FIncludeSpamTrash: Boolean;
     FUserId: string;
@@ -111,7 +111,7 @@ type
   public
     constructor Create(AService: TService; const AUserId: string);
 
-    function Execute: TDrafts; override;
+    function Execute: TDraftsResponse; override;
 
     property UserId: string read FUserId;
 
@@ -138,11 +138,11 @@ type
   TDraftsResource = class(TGmailResource)
   public
     function Create_(const AUserId: string; AContent: TDraft): TDraftsCreateRequest; virtual;
-    function Delete(const AUserId, AId: string): TDraftsDeleteRequest;
-    function Get(const AUserId, AId: string): TDraftsGetRequest;
-    function List(const AUserId: string): TDraftsListRequest;
+    function Delete(const AUserId, AId: string): TDraftsDeleteRequest; virtual;
+    function Get(const AUserId, AId: string): TDraftsGetRequest; virtual;
+    function List(const AUserId: string): TDraftsListRequest; virtual;
     function Send(const AUserId: string; AContent: TDraft): TDraftsSendRequest; virtual;
-    function Update(const AUserId, AId: string; AContent: TDraft): TDraftsUpdateRequest;
+    function Update(const AUserId, AId: string; AContent: TDraft): TDraftsUpdateRequest; virtual;
   end;
 
 implementation
@@ -258,7 +258,7 @@ end;
 
 procedure TDraftsGetRequest.FillParams(AParams: THttpRequestParameterList);
 begin
-  AParams.Add('format', Formats[Format]);
+  AParams.Add('format', FormatNames[Format]);
 end;
 
 { TDraftsUpdateRequest }
@@ -304,7 +304,7 @@ begin
   FUserId := AUserId;
 end;
 
-function TDraftsListRequest.Execute: TDrafts;
+function TDraftsListRequest.Execute: TDraftsResponse;
 var
   response: string;
   params: THttpRequestParameterList;
@@ -314,7 +314,7 @@ begin
     FillParams(params);
     response := Service.Initializer.HttpClient.Get(
       'https://gmail.googleapis.com/gmail/v1/users/' + UserId + '/drafts', params);
-    Result := TDrafts(Service.Initializer.JsonSerializer.JsonToObject(TDrafts, response));
+    Result := TDraftsResponse(Service.Initializer.JsonSerializer.JsonToObject(TDraftsResponse, response));
   finally
     params.Free();
   end;

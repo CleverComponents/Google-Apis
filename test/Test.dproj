@@ -102,6 +102,8 @@
         <DCCReference Include="..\src\gmail\GoogleApis.Gmail.Core.pas"/>
         <DCCReference Include="..\src\gmail\GoogleApis.Gmail.Users.pas"/>
         <DCCReference Include="..\src\gmail\GoogleApis.Gmail.Drafts.pas"/>
+        <DCCReference Include="..\src\gmail\GoogleApis.Gmail.History.pas"/>
+        <DCCReference Include="..\src\gmail\GoogleApis.Gmail.Threads.pas"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>

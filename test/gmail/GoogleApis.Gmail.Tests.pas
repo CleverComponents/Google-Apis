@@ -38,22 +38,22 @@ uses
   System.Generics.Defaults, TestFramework,
   GoogleApis, GoogleApis.Persister, GoogleApis.Gmail, GoogleApis.Gmail.Data,
   GoogleApis.Gmail.Users, GoogleApis.Gmail.Labels, GoogleApis.Gmail.Messages,
-  GoogleApis.Gmail.Drafts;
+  GoogleApis.Gmail.Drafts, GoogleApis.Gmail.History, GoogleApis.Gmail.Threads;
 
 type
-  TUsersTests = class(TTestCase)
+  TGmailUsersTests = class(TTestCase)
   published
     procedure TestGetProfile;
   end;
 
-  TLabelsTests = class(TTestCase)
+  TGmailLabelsTests = class(TTestCase)
   published
     procedure TestList;
     procedure TestGet;
     procedure TestModify;
   end;
 
-  TMessagesTests = class(TTestCase)
+  TGmailMessagesTests = class(TTestCase)
   public
     class function GetMessageId(const ASubject: string = ''): string;
     class function GetMyEmail: string;
@@ -69,7 +69,7 @@ type
     procedure TestBatchModify;
   end;
 
-  TDraftsTests = class(TTestCase)
+  TGmailDraftsTests = class(TTestCase)
   strict private
     function CreateDraft(const AMsg: string): string;
   published
@@ -78,6 +78,24 @@ type
     procedure TestUpdate;
     procedure TestList;
     procedure TestSend;
+  end;
+
+  TGmailHistoryTests = class(TTestCase)
+  strict private
+    function GetMessage: TMessage;
+  published
+    procedure TestList;
+  end;
+
+  TGmailThreadsTests = class(TTestCase)
+  strict private
+    function GetThreadId(const ASubject: string = ''): string;
+  published
+    procedure TestGet;
+    procedure TestList;
+    procedure TestTrash;
+    procedure TestModify;
+    procedure TestDelete;
   end;
 
 implementation
@@ -103,9 +121,9 @@ begin
   Result := Service;
 end;
 
-{ TLabelsTests }
+{ TGmailLabelsTests }
 
-procedure TLabelsTests.TestGet;
+procedure TGmailLabelsTests.TestGet;
 var
   request: TLabelsGetRequest;
   response: TLabel;
@@ -125,10 +143,10 @@ begin
   end;
 end;
 
-procedure TLabelsTests.TestList;
+procedure TGmailLabelsTests.TestList;
 var
   request: TLabelsListRequest;
-  response: TLabels;
+  response: TLabelsResponse;
   lab: TLabel;
   found: Boolean;
 begin
@@ -154,7 +172,7 @@ begin
   end;
 end;
 
-procedure TLabelsTests.TestModify;
+procedure TGmailLabelsTests.TestModify;
 var
   create_request: TLabelsCreateRequest;
   patch_request: TLabelsPatchRequest;
@@ -211,12 +229,12 @@ begin
   end;
 end;
 
-{ TMessagesTests }
+{ TGmailMessagesTests }
 
-class function TMessagesTests.GetMessageId(const ASubject: string): string;
+class function TGmailMessagesTests.GetMessageId(const ASubject: string): string;
 var
   request: TMessagesListRequest;
-  response: TMessages;
+  response: TMessagesResponse;
 begin
   request := nil;
   response := nil;
@@ -244,7 +262,7 @@ begin
   end;
 end;
 
-class function TMessagesTests.GetMyEmail: string;
+class function TGmailMessagesTests.GetMyEmail: string;
 var
   request: TUsersGetProfileRequest;
   response: TProfile;
@@ -261,7 +279,7 @@ begin
   end;
 end;
 
-procedure TMessagesTests.TestBatchDelete;
+procedure TGmailMessagesTests.TestBatchDelete;
 const
   subj = '9CB792EB-611E-4800-B79D-C659EA60DED8-msg-batchdelete';
 
@@ -307,7 +325,7 @@ begin
   end;
 end;
 
-procedure TMessagesTests.TestBatchModify;
+procedure TGmailMessagesTests.TestBatchModify;
 var
   request: TMessagesBatchModifyRequest;
   id: string;
@@ -337,7 +355,7 @@ begin
   end;
 end;
 
-procedure TMessagesTests.TestGet;
+procedure TGmailMessagesTests.TestGet;
 var
   request: TMessagesGetRequest;
   response: TMessage;
@@ -353,46 +371,41 @@ begin
     //full
     request.Format := mfFull;
     request.MetadataHeaders := nil;
-
     response := request.Execute();
-
     CheckEquals(id, response.Id);
     Check(response.Payload <> nil);
     CheckEquals('', response.Raw);
-
     Check(Length(response.Payload.Headers) > 0);
     Check(response.Payload.Body <> nil);
+    FreeAndNil(response);
 
     //raw
     request.Format := mfRaw;
     request.MetadataHeaders := nil;
-
     response := request.Execute();
-
     CheckEquals(id, response.Id);
     Check(response.Payload = nil);
     CheckNotEquals('', response.Raw);
+    FreeAndNil(response);
 
     //metadata
     request.Format := mfMetadata;
     request.MetadataHeaders := TArray<string>.Create('SUBJECT', 'FROM');
-
     response := request.Execute();
-
     CheckEquals(id, response.Id);
     Check(response.Payload <> nil);
     CheckEquals('', response.Raw);
-
     CheckEquals(2, Length(response.Payload.Headers));
     CheckNotEquals('', response.Payload.Headers[0].Value);
     Check(response.Payload.Body = nil);
+    FreeAndNil(response);
   finally
     response.Free();
     request.Free();
   end;
 end;
 
-procedure TMessagesTests.TestImport;
+procedure TGmailMessagesTests.TestImport;
 const
   subj = '9CB792EB-611E-4800-B79D-C659EA60DED8-msg-import';
 
@@ -437,7 +450,7 @@ begin
   end;
 end;
 
-procedure TMessagesTests.TestInsert;
+procedure TGmailMessagesTests.TestInsert;
 const
   subj = '9CB792EB-611E-4800-B79D-C659EA60DED8-msg-insert';
 
@@ -479,10 +492,10 @@ begin
   end;
 end;
 
-procedure TMessagesTests.TestList;
+procedure TGmailMessagesTests.TestList;
 var
   request: TMessagesListRequest;
-  response: TMessages;
+  response: TMessagesResponse;
 begin
   request := nil;
   response := nil;
@@ -506,7 +519,7 @@ begin
   end;
 end;
 
-procedure TMessagesTests.TestModify;
+procedure TGmailMessagesTests.TestModify;
 var
   request: TMessagesModifyRequest;
   response: TMessage;
@@ -549,7 +562,7 @@ begin
   end;
 end;
 
-procedure TMessagesTests.TestSend;
+procedure TGmailMessagesTests.TestSend;
 const
   subj = '9CB792EB-611E-4800-B79D-C659EA60DED8-msg-send';
 
@@ -581,9 +594,11 @@ begin
     response := send_request.Execute();
     CheckEquals(response.Id, GetMessageId(subj));
 
+    Sleep(2000);
     delete_request := GetService().Users.Messages.Delete('me', response.Id);
     delete_request.Execute();
 
+    Sleep(2000);
     CheckEquals('', GetMessageId(subj));
   finally
     response.Free();
@@ -592,7 +607,7 @@ begin
   end;
 end;
 
-procedure TMessagesTests.TestTrash;
+procedure TGmailMessagesTests.TestTrash;
 var
   request: TMessagesTrashRequest;
   response: TMessage;
@@ -626,9 +641,9 @@ begin
   end;
 end;
 
-{ TUsersTests }
+{ TGmailUsersTests }
 
-procedure TUsersTests.TestGetProfile;
+procedure TGmailUsersTests.TestGetProfile;
 var
   request: TUsersGetProfileRequest;
   response: TProfile;
@@ -650,9 +665,9 @@ begin
   end;
 end;
 
-{ TDraftsTests }
+{ TGmailDraftsTests }
 
-function TDraftsTests.CreateDraft(const AMsg: string): string;
+function TGmailDraftsTests.CreateDraft(const AMsg: string): string;
 var
   request: TDraftsCreateRequest;
   response: TDraft;
@@ -680,7 +695,7 @@ begin
   end;
 end;
 
-procedure TDraftsTests.TestDelete;
+procedure TGmailDraftsTests.TestDelete;
 const
   subj = '9CB792EB-611E-4800-B79D-C659EA60DED8-draft-create';
 
@@ -705,7 +720,7 @@ begin
   end;
 end;
 
-procedure TDraftsTests.TestGet;
+procedure TGmailDraftsTests.TestGet;
 const
   subj = '9CB792EB-611E-4800-B79D-C659EA60DED8-draft-get';
 
@@ -745,7 +760,7 @@ begin
   end;
 end;
 
-procedure TDraftsTests.TestList;
+procedure TGmailDraftsTests.TestList;
 const
   subj = '9CB792EB-611E-4800-B79D-C659EA60DED8-draft-list';
 
@@ -760,7 +775,7 @@ var
   list_request: TDraftsListRequest;
   delete_request: TDraftsDeleteRequest;
   create_response: TDraft;
-  list_response: TDrafts;
+  list_response: TDraftsResponse;
   id: string;
 begin
   list_request := nil;
@@ -787,7 +802,7 @@ begin
   end;
 end;
 
-procedure TDraftsTests.TestSend;
+procedure TGmailDraftsTests.TestSend;
 const
   subj = '9CB792EB-611E-4800-B79D-C659EA60DED8-draft-send';
 
@@ -806,7 +821,7 @@ var
   response: TMessage;
   id, myEmail: string;
 begin
-  myEmail := TMessagesTests.GetMyEmail();
+  myEmail := TGmailMessagesTests.GetMyEmail();
 
   send_request := nil;
   delete_request := nil;
@@ -818,8 +833,10 @@ begin
     send_request.Content.Id := id;
     response := send_request.Execute();
 
-    id := TMessagesTests.GetMessageId(subj);
+    id := TGmailMessagesTests.GetMessageId(subj);
     CheckEquals(response.Id, id);
+
+    Sleep(2000);
 
     delete_request := GetService().Users.Messages.Delete('me', id);
     delete_request.Execute();
@@ -830,7 +847,7 @@ begin
   end;
 end;
 
-procedure TDraftsTests.TestUpdate;
+procedure TGmailDraftsTests.TestUpdate;
 const
   subj = '9CB792EB-611E-4800-B79D-C659EA60DED8-draft-update';
 
@@ -880,11 +897,291 @@ begin
   end;
 end;
 
+{ TGmailHistoryTests }
+
+function TGmailHistoryTests.GetMessage: TMessage;
+var
+  list_request: TMessagesListRequest;
+  list_response: TMessagesResponse;
+  get_request: TMessagesGetRequest;
+begin
+  list_request := nil;
+  list_response := nil;
+  get_request := nil;
+  Result := nil;
+  try
+    list_request := GetService().Users.Messages.List('me');
+    list_request.MaxResults := 1;
+
+    list_response := list_request.Execute();
+
+    if (Length(list_response.Messages) <> 1) then Exit(nil);
+
+    get_request := GetService().Users.Messages.Get('me', list_response.Messages[0].Id);
+    get_request.Format := mfFull;
+
+    try
+      Result := get_request.Execute();
+    except
+      Result.Free();
+      raise;
+    end;
+
+  finally
+    get_request.Free();
+    list_response.Free();
+    list_request.Free();
+  end;
+end;
+
+procedure TGmailHistoryTests.TestList;
+var
+  msg: TMessage;
+  request: THistoryListRequest;
+  response: THistoryResponse;
+begin
+  request := nil;
+  response := nil;
+  msg := nil;
+  try
+    msg := GetMessage();
+    CheckFalse(nil = msg);
+
+    request := GetService().Users.History.List('me');
+    request.MaxResults := 1;
+    request.StartHistoryId := msg.HistoryId;
+    request.HistoryTypes := [htMessageAdded, htMessageDeleted, htLabelAdded, htLabelRemoved];
+
+    response := request.Execute();
+
+    CheckNotEquals('', response.HistoryId);
+  finally
+    msg.Free();
+    response.Free();
+    request.Free();
+  end;
+end;
+
+{ TGmailThreadsTests }
+
+function TGmailThreadsTests.GetThreadId(const ASubject: string): string;
+var
+  request: TThreadsListRequest;
+  response: TThreadsResponse;
+begin
+  request := nil;
+  response := nil;
+  try
+    request := GetService().Users.Threads.List('me');
+    request.MaxResults := 1;
+
+    if (ASubject <> '') then
+    begin
+      request.Q := 'subject:' + ASubject;
+    end;
+
+    response := request.Execute();
+
+    if (Length(response.Threads) = 1) then
+    begin
+      Result := response.Threads[0].Id;
+    end else
+    begin
+      Result := '';
+    end;
+  finally
+    response.Free();
+    request.Free();
+  end;
+end;
+
+procedure TGmailThreadsTests.TestDelete;
+const
+  subj = '9CB792EB-611E-4800-B79D-C659EA60DED8-thread-delete';
+
+  msg =
+'From: %s'#$D#$A +
+'To: %s'#$D#$A +
+'Subject: ' + subj + #$D#$A +
+'MIME-Version: 1.0'#$D#$A +
+'Content-Type: text/plain'#$D#$A +
+#$D#$A +
+'Hello from gmail api for Delphi'#$D#$A;
+
+var
+  send_request: TMessagesSendRequest;
+  delete_request: TThreadsDeleteRequest;
+  content, response: TMessage;
+  myEmail, threadId: string;
+begin
+  myEmail := TGmailMessagesTests.GetMyEmail();
+
+  send_request := nil;
+  delete_request := nil;
+  response := nil;
+  try
+    content := TMessage.Create();
+    send_request := GetService().Users.Messages.Send('me', content);
+
+    content.Raw := TBase64UrlEncoder.Encode(Format(msg, [myEmail, myEmail]));
+    response := send_request.Execute();
+
+    threadId := GetThreadId(subj);
+    CheckNotEquals('', threadId);
+
+    Sleep(2000);
+
+    delete_request := GetService().Users.Threads.Delete('me', threadId);
+    delete_request.Execute();
+
+    Sleep(2000);
+    CheckEquals('', GetThreadId(subj));
+  finally
+    response.Free();
+    delete_request.Free();
+    send_request.Free();
+  end;
+end;
+
+procedure TGmailThreadsTests.TestGet;
+var
+  request: TThreadsGetRequest;
+  response: TThread;
+  id: string;
+begin
+  request := nil;
+  response := nil;
+  try
+    id := GetThreadId();
+
+    request := GetService().Users.Threads.Get('me', id);
+
+    request.Format := mfFull;
+    request.MetadataHeaders := nil;
+
+    response := request.Execute();
+
+    CheckEquals(id, response.Id);
+    CheckTrue(Length(response.Messages) > 0);
+    CheckEquals('', response.Messages[0].Raw);
+
+    Check(Length(response.Messages[0].Payload.Headers) > 0);
+    Check(response.Messages[0].Payload.Body <> nil);
+  finally
+    response.Free();
+    request.Free();
+  end;
+end;
+
+procedure TGmailThreadsTests.TestList;
+var
+  request: TThreadsListRequest;
+  response: TThreadsResponse;
+begin
+  request := nil;
+  response := nil;
+  try
+    request := GetService().Users.Threads.List('me');
+    request.MaxResults := 2;
+    request.LabelIds := TArray<string>.Create('INBOX');
+
+    response := request.Execute();
+
+    CheckEquals(2, Length(response.Threads));
+  finally
+    response.Free();
+    request.Free();
+  end;
+end;
+
+procedure TGmailThreadsTests.TestModify;
+var
+  request: TThreadsModifyRequest;
+  response: TThread;
+  id: string;
+  ind: Integer;
+  arr: TArray<string>;
+  content: TModifyThreadRequest;
+begin
+  request := nil;
+  response := nil;
+  try
+    id := GetThreadId();
+
+    content := TModifyThreadRequest.Create();
+    request := GetService().Users.Threads.Modify('me', id, content);
+    content.AddLabelIds := TArray<string>.Create('TRASH');
+    content.RemoveLabelIds := TArray<string>.Create('INBOX');
+    response := request.Execute();
+    CheckTrue(Length(response.Messages) > 0);
+    arr := response.Messages[0].LabelIds;
+    TArray.Sort<string>(arr, TStringComparer.Ordinal);
+    CheckTrue(TArray.BinarySearch<string>(arr, 'TRASH', ind));
+    CheckFalse(TArray.BinarySearch<string>(arr, 'INBOX', ind));
+    FreeAndNil(response);
+    FreeAndNil(request);
+
+    content := TModifyThreadRequest.Create();
+    request := GetService().Users.Threads.Modify('me', id, content);
+    content.AddLabelIds := TArray<string>.Create('INBOX');
+    content.RemoveLabelIds := TArray<string>.Create('TRASH');
+    response := request.Execute();
+    CheckTrue(Length(response.Messages) > 0);
+    arr := response.Messages[0].LabelIds;
+    TArray.Sort<string>(arr, TStringComparer.Ordinal);
+    CheckFalse(TArray.BinarySearch<string>(arr, 'TRASH', ind));
+    CheckTrue(TArray.BinarySearch<string>(arr, 'INBOX', ind));
+    FreeAndNil(response);
+    FreeAndNil(request);
+  finally
+    response.Free();
+    request.Free();
+  end;
+end;
+
+procedure TGmailThreadsTests.TestTrash;
+var
+  request: TThreadsTrashRequest;
+  response: TThread;
+  id: string;
+  ind: Integer;
+  arr: TArray<string>;
+begin
+  request := nil;
+  response := nil;
+  try
+    id := GetThreadId();
+
+    request := GetService().Users.Threads.Trash('me', id);
+    response := request.Execute();
+    CheckTrue(Length(response.Messages) > 0);
+    arr := response.Messages[0].LabelIds;
+    TArray.Sort<string>(arr, TStringComparer.Ordinal);
+    CheckTrue(TArray.BinarySearch<string>(arr, 'TRASH', ind));
+    FreeAndNil(response);
+    FreeAndNil(request);
+
+    request := GetService().Users.Threads.Untrash('me', id);
+    response := request.Execute();
+    CheckTrue(Length(response.Messages) > 0);
+    arr := response.Messages[0].LabelIds;
+    TArray.Sort<string>(arr, TStringComparer.Ordinal);
+    CheckFalse(TArray.BinarySearch<string>(arr, 'TRASH', ind));
+    FreeAndNil(response);
+    FreeAndNil(request);
+  finally
+    response.Free();
+    request.Free();
+  end;
+end;
+
 initialization
-  TestFramework.RegisterTest(TUsersTests.Suite);
-  TestFramework.RegisterTest(TLabelsTests.Suite);
-  TestFramework.RegisterTest(TMessagesTests.Suite);
-  TestFramework.RegisterTest(TDraftsTests.Suite);
+  TestFramework.RegisterTest(TGmailUsersTests.Suite);
+  TestFramework.RegisterTest(TGmailLabelsTests.Suite);
+  TestFramework.RegisterTest(TGmailMessagesTests.Suite);
+  TestFramework.RegisterTest(TGmailDraftsTests.Suite);
+  TestFramework.RegisterTest(TGmailHistoryTests.Suite);
+  TestFramework.RegisterTest(TGmailThreadsTests.Suite);
 
 finalization
   Service.Free();
