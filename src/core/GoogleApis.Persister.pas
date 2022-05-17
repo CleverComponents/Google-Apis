@@ -35,7 +35,7 @@ interface
 
 uses
   System.Classes, System.SysUtils, GoogleApis, clJsonSerializer,
-  clOAuth, clHttp, clUriUtils, clHttpRequest, clEncoder;
+  clOAuth, clHttp, clUriUtils, clHttpRequest, System.NetEncoding, clTranslator;
 
 type
   TGoogleOAuthCredential = class(TCredential)
@@ -424,18 +424,36 @@ end;
 { TBase64UrlEncoder }
 
 class function TBase64UrlEncoder.Decode(const Value: string): string;
+var
+  encoding: TNetEncoding;
+  buf: TBytes;
 begin
-  Result := StringReplace(Value, '-', '+', [rfReplaceAll]);
-  Result := StringReplace(Result, '_', '/', [rfReplaceAll]);
-  Result := TclEncoder.Decode(Result, cmBase64);
+  encoding := TBase64Encoding.Create(0);
+  try
+    Result := StringReplace(Value, '-', '+', [rfReplaceAll]);
+    Result := StringReplace(Result, '_', '/', [rfReplaceAll]);
+    buf := encoding.DecodeStringToBytes(Result);
+    Result := TclTranslator.GetString(buf);
+  finally
+    encoding.Free();
+  end;
 end;
 
 class function TBase64UrlEncoder.Encode(const Value: string): string;
+var
+  encoding: TNetEncoding;
+  buf: TBytes;
 begin
-  Result := TclEncoder.EncodeToString(Value, cmBase64);
-  Result := StringReplace(Result, '+', '-', [rfReplaceAll]);
-  Result := StringReplace(Result, '/', '_', [rfReplaceAll]);
-  Result := StringReplace(Result, '=', '', [rfReplaceAll]);
+  encoding := TBase64Encoding.Create(0);
+  try
+    buf := TclTranslator.GetBytes(Value);
+    Result := encoding.EncodeBytesToString(buf);
+    Result := StringReplace(Result, '+', '-', [rfReplaceAll]);
+    Result := StringReplace(Result, '/', '_', [rfReplaceAll]);
+    Result := StringReplace(Result, '=', '', [rfReplaceAll]);
+  finally
+    encoding.Free();
+  end;
 end;
 
 end.

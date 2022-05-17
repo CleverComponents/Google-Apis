@@ -111,7 +111,7 @@ begin
   if (Service = nil) then
   begin
     credential := TGoogleOAuthCredential.Create();
-    initializer := TGoogleApisServiceInitializer.Create(credential, 'CleverComponents Calendar test');
+    initializer := TGoogleApisServiceInitializer.Create(credential, 'CleverComponents Gmail test');
     Service := TGmailService.Create(initializer);
 
     credential.ClientID := '421475025220-6khpgoldbdsi60fegvjdqk2bk4v19ss2.apps.googleusercontent.com';
