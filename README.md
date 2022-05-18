@@ -15,15 +15,15 @@ You can start investigating the project from tests for Gmail message sending. Pl
 
 This method shows how to compose a simple email message, send, and delete this message from your Gmail inbox folder. The used email message represents a small test-plain message.   
 
-For more complex emails, you can use the TclMailMessage component. All you need is to use the TclMailMessage.MessageSource.Text property to get the raw message content and supply to the TMessage class.   
+For more complex messages (with HTML, images, and attachments), you can use the TclMailMessage component. All you need is to use the TclMailMessage.MessageSource.Text property to get the raw message content, encode to the base64url format, and supply to the TMessage class.   
 
-Also the repository includes an example of using Gmail to send mail from your Delphi app. Just try it and see how it works:   
+Also this repository includes an example of using Gmail to send mail from your Delphi app. Just try the example and see how it works:   
 https://github.com/CleverComponents/Google-Apis/tree/main/examples/gmail/SendMail
 
-All tests utilize our test Google App project, which is not validated at this time.   
+All tests utilize our test Google App project's credentials to authorize at Google. This project is not validated at this time.   
 You will need to specify your own project's client ID and Secret within the GetService function (is also declared in GoogleApis.Gmail.Tests.pas).   
 
-When running the DUnit test project, the program automatically opens the Google Login form, authenticates, and performs the messages, labels, drafts, and other tests using the connected Gmail account.   
+When running tests, the program automatically opens Google Login form, authorizes, and performs the messages, labels, drafts, and other tests using the connected Gmail account.   
 
 How to use:   
 1. Please clone the [GitHub/CleverComponents/Google-Apis](https://github.com/CleverComponents/Google-Apis) repository.
