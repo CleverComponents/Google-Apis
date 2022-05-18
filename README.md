@@ -6,7 +6,7 @@ This GitHub repository provides Delphi classes for Google APIs together with tes
 
 The current version of the Google APIs for Delphi library provides access to Gmail and Google Calendar APIs, and we are working on adding the other Google Workspace REST APIs.   
 
-The library obsoletes the [GitHub/CleverComponents/Google-Calendar-API](https://github.com/CleverComponents/Google-Calendar-API) project.   
+This library replaces the [GitHub/CleverComponents/Google-Calendar-API](https://github.com/CleverComponents/Google-Calendar-API) project.   
 
 Google REST APIs for Delphi utilizes RTTI to serialize JSON to Delphi classes and Clever Internet components to implement HTTPS and OAUTH protocols.   
 See the [GitHub/CleverComponents/Json-Serializer](https://github.com/CleverComponents/Json-Serializer) repository and the [Clever Internet Suite](https://www.clevercomponents.com/products/inetsuite/) website for more details.   
