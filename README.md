@@ -18,7 +18,7 @@ This method shows how to compose a simple email message, send, and delete this m
 For more complex messages (with HTML, images, and attachments), you can use the TclMailMessage component. All you need is to use the TclMailMessage.MessageSource.Text property to get the raw message content, encode to the base64url format, and supply to the TMessage class.   
 
 Also this repository includes an example of using Gmail to send mail from your Delphi app. Just try the example and see how it works:   
-https://github.com/CleverComponents/Google-Apis/tree/main/examples/gmail/SendMail
+[examples/gmail/SendMail](/examples/gmail/SendMail)
 
 All tests utilize our test Google App project's credentials to authorize at Google. This project is not validated at this time.   
 You will need to specify your own project's client ID and Secret within the GetService function (is also declared in GoogleApis.Gmail.Tests.pas).   
