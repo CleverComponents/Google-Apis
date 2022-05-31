@@ -14,6 +14,8 @@ object MainForm: TMainForm
   Font.Style = []
   OldCreateOrder = False
   Position = poDesktopCenter
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
   PixelsPerInch = 96
   TextHeight = 13
   object pnlLogo: TPanel
@@ -4876,7 +4878,6 @@ object MainForm: TMainForm
       Enabled = False
       ReadOnly = True
       TabOrder = 0
-      Text = 'user@gmail.com'
     end
     object edtTo: TEdit
       Left = 56
@@ -4930,7 +4931,7 @@ object MainForm: TMainForm
       Height = 25
       Anchors = [akRight, akBottom]
       Caption = 'Send'
-      TabOrder = 7
+      TabOrder = 8
       OnClick = btnSendClick
     end
     object lbAttachments: TListBox
@@ -4961,6 +4962,16 @@ object MainForm: TMainForm
       Caption = 'Delete'
       TabOrder = 5
       OnClick = btnDeleteClick
+    end
+    object btnLogout: TButton
+      Left = 16
+      Top = 330
+      Width = 121
+      Height = 25
+      Caption = 'Cancel / Logout'
+      Enabled = False
+      TabOrder = 7
+      OnClick = btnLogoutClick
     end
   end
   object clMailMessage1: TclMailMessage

@@ -5,7 +5,7 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ExtCtrls, Vcl.StdCtrls, System.IOUtils, Winapi.ShellAPI,
-  clMailMessage, GoogleApis, GoogleApis.Persister, GoogleApis.Gmail, SendGmail;
+  clMailMessage, clSocketUtils, GoogleApis, GoogleApis.Persister, GoogleApis.Gmail, SendGmail;
 
 type
   TMainForm = class(TForm)
@@ -28,11 +28,16 @@ type
     btnAdd: TButton;
     btnDelete: TButton;
     OpenDialog1: TOpenDialog;
+    btnLogout: TButton;
     procedure btnSendClick(Sender: TObject);
     procedure btnDeleteClick(Sender: TObject);
     procedure btnAddClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
+    procedure btnLogoutClick(Sender: TObject);
   private
-    { Private declarations }
+    FService: TGmailService;
+    function GetService: TGmailService;
   public
     { Public declarations }
   end;
@@ -44,19 +49,28 @@ implementation
 
 {$R *.dfm}
 
-procedure TMainForm.btnSendClick(Sender: TObject);
+procedure TMainForm.FormCreate(Sender: TObject);
+begin
+  FService := nil;
+end;
+
+procedure TMainForm.FormDestroy(Sender: TObject);
+begin
+  FService.Free();
+end;
+
+function TMainForm.GetService: TGmailService;
 var
   credential: TGoogleOAuthCredential;
   initializer: TServiceInitializer;
-  service: TGmailService;
 begin
-  btnSend.Enabled := False;
-  btnSend.Caption := 'Sending...';
+  btnLogout.Enabled := True;
 
-  credential := TGoogleOAuthCredential.Create();
-  initializer := TGoogleApisServiceInitializer.Create(credential, 'CleverComponents Gmail example');
-  service := TGmailService.Create(initializer);
-  try
+  if (FService = nil) then
+  begin
+    credential := TGoogleOAuthCredential.Create();
+    initializer := TGoogleApisServiceInitializer.Create(credential, 'CleverComponents Gmail example');
+    FService := TGmailService.Create(initializer);
     //You need to specify both Client ID and Client Secret of your Google API Project.
     credential.ClientID := '421475025220-6khpgoldbdsi60fegvjdqk2bk4v19ss2.apps.googleusercontent.com';
     credential.ClientSecret := '_4HJyAVUmH_iVrPB8pOJXjR1';
@@ -67,7 +81,19 @@ begin
     credential.Scope := GmailReadonly + ' ' + GmailSend;
 
     //Set the user's email address as the message sender.
-    edtFrom.Text := GetMyEmailAddress(service);
+    edtFrom.Text := GetMyEmailAddress(FService);
+  end;
+  Result := FService;
+end;
+
+procedure TMainForm.btnSendClick(Sender: TObject);
+var
+  service: TGmailService;
+begin
+  btnSend.Enabled := False;
+  btnSend.Caption := 'Sending...';
+  try
+    service := GetService();
 
     //Build a new mail message
     clMailMessage1.BuildMessage(memBody.Text, lbAttachments.Items);
@@ -79,7 +105,6 @@ begin
 
     ShowMessage('The message was sent successfully.');
   finally
-    service.Free();
     btnSend.Enabled := True;
     btnSend.Caption := 'Send';
   end;
@@ -98,6 +123,19 @@ begin
   if (lbAttachments.ItemIndex > -1) then
   begin
     lbAttachments.Items.Delete(lbAttachments.ItemIndex);
+  end;
+end;
+
+procedure TMainForm.btnLogoutClick(Sender: TObject);
+begin
+  if btnSend.Enabled then
+  begin
+    FreeAndNil(FService);
+    edtFrom.Text := '';
+    btnLogout.Enabled := False;
+  end else
+  begin
+    FService.Abort();
   end;
 end;
 
